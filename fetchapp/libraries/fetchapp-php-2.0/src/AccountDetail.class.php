@@ -1,0 +1,242 @@
+<?php
+/**
+ * Created by JetBrains PhpStorm.
+ * User: Brendon Dugan <wishingforayer@gmail.com>
+ * Date: 6/1/13
+ * Time: 1:18 PM
+ */
+
+namespace FetchApp\API;
+
+
+class AccountDetail
+{
+    /**
+     * @var $AccountID int
+     */
+    protected $AccountID;
+    /**
+     * @var $AccountName string
+     */
+    protected $AccountName;
+    /**
+     * @var $EmailAddress string
+     */
+    protected $EmailAddress;
+    /**
+     * @var $URL string
+     */
+    protected $URL;
+    /**
+     * @var $BillingEmail string
+     */
+    protected $BillingEmail;
+    /**
+     * @var $OrderExpirationInHours int
+     */
+    protected $OrderExpirationInHours;
+    /**
+     * @var $ItemDownloadLimit int
+     */
+    protected $ItemDownloadLimit;
+    /**
+     * @var $Currency int
+     */
+    protected $Currency;
+    /**
+     * @var $CreationDate \DateTime
+     */
+    protected $CreationDate;
+    /**
+     * @var $APIKey string
+     */
+    protected $APIKey;
+    /**
+     * @var $APIToken string
+     */
+    protected $APIToken;
+
+    /**
+     * Default Constructor
+     */
+    public function __construct()
+    {
+        $this->CreationDate = new \DateTime("1-1-1901");
+    }
+
+    /**
+     * @param string $APIKey
+     */
+    public function setAPIKey($APIKey)
+    {
+        $this->APIKey = $APIKey;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAPIKey()
+    {
+        return $this->APIKey;
+    }
+
+    /**
+     * @param string $APIToken
+     */
+    public function setAPIToken($APIToken)
+    {
+        $this->APIToken = $APIToken;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAPIToken()
+    {
+        return $this->APIToken;
+    }
+
+    /**
+     * @param int $AccountID
+     */
+    public function setAccountID($AccountID)
+    {
+        $this->AccountID = $AccountID;
+    }
+
+    /**
+     * @return int
+     */
+    public function getAccountID()
+    {
+        return $this->AccountID;
+    }
+
+    /**
+     * @param string $AccountName
+     */
+    public function setAccountName($AccountName)
+    {
+        $this->AccountName = $AccountName;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAccountName()
+    {
+        return $this->AccountName;
+    }
+
+    /**
+     * @param string $BillingEmail
+     */
+    public function setBillingEmail($BillingEmail)
+    {
+        $this->BillingEmail = $BillingEmail;
+    }
+
+    /**
+     * @return string
+     */
+    public function getBillingEmail()
+    {
+        return $this->BillingEmail;
+    }
+
+    /**
+     * @param \DateTime $CreationDate
+     */
+    public function setCreationDate($CreationDate)
+    {
+        $this->CreationDate = $CreationDate;
+    }
+
+    /**
+     * @return \DateTime
+     */
+    public function getCreationDate()
+    {
+        return $this->CreationDate;
+    }
+
+    /**
+     * @param int $Currency
+     */
+    public function setCurrency($Currency)
+    {
+        $this->Currency = $Currency;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCurrency()
+    {
+        return $this->Currency;
+    }
+
+    /**
+     * @param string $EmailAddress
+     */
+    public function setEmailAddress($EmailAddress)
+    {
+        $this->EmailAddress = $EmailAddress;
+    }
+
+    /**
+     * @return string
+     */
+    public function getEmailAddress()
+    {
+        return $this->EmailAddress;
+    }
+
+    /**
+     * @param int $ItemDownloadLimit
+     */
+    public function setItemDownloadLimit($ItemDownloadLimit)
+    {
+        $this->ItemDownloadLimit = $ItemDownloadLimit;
+    }
+
+    /**
+     * @return int
+     */
+    public function getItemDownloadLimit()
+    {
+        return $this->ItemDownloadLimit;
+    }
+
+    /**
+     * @param int $OrderExpirationInHours
+     */
+    public function setOrderExpirationInHours($OrderExpirationInHours)
+    {
+        $this->OrderExpirationInHours = $OrderExpirationInHours;
+    }
+
+    /**
+     * @return int
+     */
+    public function getOrderExpirationInHours()
+    {
+        return $this->OrderExpirationInHours;
+    }
+
+    /**
+     * @param string $URL
+     */
+    public function setURL($URL)
+    {
+        $this->URL = $URL;
+    }
+
+    /**
+     * @return string
+     */
+    public function getURL()
+    {
+        return $this->URL;
+    }
+}

@@ -1,9 +1,12 @@
 <?php
 /**
  * Created by JetBrains PhpStorm.
- * User: Brendon Dugan <wishingforayer@gmail.com>
- * Date: 6/1/13
- * Time: 1:25 PM
+ * Updated by SublimeText 2.
+ * Creator: Brendon Dugan <wishingforayer@gmail.com>
+ * Last Updated: Patrick Conant <conantp@gmai.com>
+ * User: Patrick Conant <conantp@gmai.com>
+ * Date: 8/7/13
+ * Time: 8:00 PM
  */
 
 namespace FetchApp\API;
@@ -136,6 +139,4 @@ class ProductStatistic
     {
         return $this->SKU;
     }
-
-
 }

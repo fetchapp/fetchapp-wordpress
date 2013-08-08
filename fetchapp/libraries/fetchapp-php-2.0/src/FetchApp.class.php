@@ -1,9 +1,12 @@
 <?php
 /**
  * Created by JetBrains PhpStorm.
- * User: Brendon Dugan <wishingforayer@gmail.com>
- * Date: 6/1/13
- * Time: 1:11 PM
+ * Updated by SublimeText 2.
+ * Creator: Brendon Dugan <wishingforayer@gmail.com>
+ * Last Updated: Patrick Conant <conantp@gmail.com>
+ * User: Patrick Conant <conantp@gmail.com>
+ * Date: 8/7/13
+ * Time: 8:00 PM
  */
 
 namespace FetchApp\API;
@@ -236,7 +239,6 @@ class FetchApp
 
                 $products[] = $tempProduct;
             }
-
         }
         return $products;
     }

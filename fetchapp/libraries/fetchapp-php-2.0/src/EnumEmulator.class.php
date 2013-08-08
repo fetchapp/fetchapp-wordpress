@@ -1,9 +1,12 @@
 <?php
 /**
  * Created by JetBrains PhpStorm.
- * User: Brendon Dugan <wishingforayer@gmail.com>
- * Date: 6/1/13
- * Time: 3:42 PM
+ * Updated by SublimeText 2.
+ * Creator: Brendon Dugan <wishingforayer@gmail.com>
+ * Last Updated: Patrick Conant <conantp@gmail.com>
+ * User: Patrick Conant <conantp@gmail.com>
+ * Date: 8/7/13
+ * Time: 8:00 PM
  */
 
 namespace FetchApp\API;
@@ -11,7 +14,10 @@ namespace FetchApp\API;
 
 class EnumEmulator
 {
-
+	
+	/**
+     * @return mixed
+     */
     public static function getName($const, $className)
     {
         $fakeEnumClass = new \ReflectionClass($className);
@@ -23,7 +29,10 @@ class EnumEmulator
         }
         return false;
     }
-
+	
+	/**
+     * @return array
+     */
     public static function getOptions($className)
     {
         $fakeEnumClass = new \ReflectionClass($className);
@@ -34,7 +43,10 @@ class EnumEmulator
         }
         return $options;
     }
-
+	
+	/**
+     * @return mixed
+     */
     public static function getValue($name, $className)
     {
         $fakeEnumClass = new \ReflectionClass($className);

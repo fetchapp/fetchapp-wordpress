@@ -1,9 +1,12 @@
 <?php
 /**
  * Created by JetBrains PhpStorm.
- * User: Brendon Dugan <wishingforayer@gmail.com>
- * Date: 6/1/13
- * Time: 1:24 PM
+ * Updated by SublimeText 2.
+ * Creator: Brendon Dugan <wishingforayer@gmail.com>
+ * Last Updated: Patrick Conant <conantp@gmail.com>
+ * User: Patrick Conant <conantp@gmail.com>
+ * Date: 8/7/13
+ * Time: 8:00 PM
  */
 
 namespace FetchApp\API;
@@ -298,13 +301,14 @@ class OrderItem
     }
     
     /**
-     *
+     * @return mixed
      */
     public function expire()
     {
         APIWrapper::verifyReadiness();
         $requestURL = "https://app.fetchapp.com/api/v2/order_items/" . $this->ItemID . "/expire";
-        APIWrapper::makeRequest($requestURL, "GET");
+        $response = APIWrapper::makeRequest($requestURL, "GET");
+        return $response;
     }
 
 

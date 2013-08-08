@@ -1,9 +1,12 @@
 <?php
 /**
  * Created by JetBrains PhpStorm.
- * User: Brendon Dugan <wishingforayer@gmail.com>
- * Date: 6/1/13
- * Time: 1:24 PM
+ * Updated by SublimeText 2.
+ * Creator: Brendon Dugan <wishingforayer@gmail.com>
+ * Last Updated: Patrick Conant <conantp@gmail.com>
+ * User: Patrick Conant <conantp@gmail.com>
+ * Date: 8/7/13
+ * Time: 8:00 PM
  */
 
 namespace FetchApp\API;
@@ -89,7 +92,6 @@ class Order
     {
         $this->items = array();
     }
-
 
     /**
      * @param \DateTime $CreationDate
@@ -416,32 +418,30 @@ class Order
     }
 
     /**
-     * 
-     */
-    /*
-    public function resetExpiration($resetExpiration = false, \DateTime $expirationDate = null, $downloadLimit = -1)
-    {
-        // PRC: I don't believe this function is necessary; the same 
-        // functionality can be achieved from the $resetExpiration parameter in sendDownloadEmail 
-    }*/
-
-    /**
-     *
+     * @return mixed
      */
     public function expire()
     {
         APIWrapper::verifyReadiness();
         $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/expire";
-        APIWrapper::makeRequest($requestURL, "GET");
+        $response = APIWrapper::makeRequest($requestURL, "GET");
+		return $response;
     }
-
+	
+	/**
+     * @return mixed
+     */
     public function delete()
     {
         APIWrapper::verifyReadiness();
         $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/delete";
-        APIWrapper::makeRequest($requestURL, "DELETE");
+        $response = APIWrapper::makeRequest($requestURL, "DELETE");
+		return $response;
     }
-
+	
+	/**
+     * @return mixed
+     */
     public function sendDownloadEmail($resetExpiration = true, \DateTime $expirationDate = null, $downloadLimit = -1)
     {
         APIWrapper::verifyReadiness();
@@ -458,7 +458,8 @@ class Order
             }
         }
         $requestURL = rtrim($requestURL, '?');
-        APIWrapper::makeRequest($requestURL, "POST");
+        $response = APIWrapper::makeRequest($requestURL, "POST");
+        return $response;
     }
 
     /**
@@ -537,13 +538,16 @@ class Order
                 $i->setCustom3(null);
             }
             $i->setCreationDate(new \DateTime($item->created_at));
-//            $i->setDownloadsRemaining(0); // We don't seem to be getting this back.
+			// $i->setDownloadsRemaining(0); // We don't seem to be getting this back.
 
             $items[] = $i;
         }
         return $items;
     }
-
+	
+	/**
+     * @return \SimpleXMLElement
+     */
     public function toXML($sendEmailFlag = true)
     {
         $orderXML = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?>' . '<order></order>');

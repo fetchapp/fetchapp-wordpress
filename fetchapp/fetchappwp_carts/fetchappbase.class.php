@@ -248,16 +248,20 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			register_setting( 'fetchapp_scheduled_sync', 'fetchapp_scheduled_sync', array($this, 'fetchapp_debug_validate') );
 
 
-			add_settings_section('fetchapp_authentication', 'Authentication', 'plugin_section_text', 'fetchapp_wc_settings');
+			add_settings_section('fetchapp_authentication', 'Authentication', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_key', 'FetchApp API Key', array($this, 'fetchapp_key_string'), 'fetchapp_wc_settings', 'fetchapp_authentication');
 			add_settings_field('fetchapp_token', 'FetchApp API Token', array($this, 'fetchapp_token_string'), 'fetchapp_wc_settings', 'fetchapp_authentication');
 
-			add_settings_section('fetchapp_debug', 'Debug', 'plugin_section_text', 'fetchapp_wc_settings');
+			add_settings_section('fetchapp_debug', 'Debug', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_debug_mode', 'Show Debug Messages', array($this, 'fetchapp_debug_string'), 'fetchapp_wc_settings', 'fetchapp_debug');
 
-			add_settings_section('fetchapp_scheduled_sync_section', 'Scheduled Sync', 'plugin_section_text', 'fetchapp_wc_settings');
+			add_settings_section('fetchapp_scheduled_sync_section', 'Scheduled Sync', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_scheduled_sync', 'Sync with FetchApp every hour', array($this, 'fetchapp_scheduled_sync_string'), 'fetchapp_wc_settings', 'fetchapp_scheduled_sync_section');
 
+		}
+		
+		public function plugin_section_text() {
+			echo '';
 		}
 
 		public function fetchapp_token_validate($input){

@@ -9,5 +9,5 @@ Author URI: http://www.prcapps.com/
 */
 
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) :
-	require_once('carts/wc_fetchapp.class.php');
+	require_once('fetchappwp_carts/wc_fetchapp.class.php');
 endif;

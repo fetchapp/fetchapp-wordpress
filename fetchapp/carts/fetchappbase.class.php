@@ -38,15 +38,18 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 
 			if ( get_option( 'fetchapp_token' ) ):
-				$this->fetch_key  = get_option( 'fetchapp_key' )['text_string'];
+				$fetch_key_option = get_option( 'fetchapp_key' );
+				$this->fetch_key = $fetch_key_option['text_string'];
 			endif;
 
 			if ( get_option( 'fetchapp_token' ) ):
-				$this->fetch_token  = get_option( 'fetchapp_token' )['text_string'];
+				$fetch_token_option = get_option( 'fetchapp_token' );
+				$this->fetch_token = $fetch_token_option['text_string'];
 			endif;
 
 			if ( get_option( 'fetchapp_debug_mode' ) ):
-				$this->debug  = get_option( 'fetchapp_debug_mode' )['text_string'];
+				$debug_option = get_option( 'fetchapp_debug_mode' );
+				$this->debug = $debug_option['text_string'];
 			endif;
 
 			$this->fetchApp = new FetchApp\API\FetchApp();
@@ -159,7 +162,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		}
 
 		public function doFetchAppScheduledSync(){
-			if(get_option('fetchapp_scheduled_sync') && isset(get_option('fetchapp_scheduled_sync')['text_string']) && get_option('fetchapp_scheduled_sync')['text_string'] == '1'):
+			if($fetchapp_scheduled_sync = get_option('fetchapp_scheduled_sync') && isset($fetchapp_scheduled_sync['text_string']) && $fetchapp_scheduled_sync['text_string'] == '1'):
 				$this->syncAllProducts();
 				$this->syncAllOrders();
 			endif;

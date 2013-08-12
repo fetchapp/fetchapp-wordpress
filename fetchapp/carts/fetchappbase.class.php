@@ -1,10 +1,6 @@
 <?php
-/**
- * @package FetchApp
- * @version 1.0
- */
 /*
-Plugin Name: Fetch App
+Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant

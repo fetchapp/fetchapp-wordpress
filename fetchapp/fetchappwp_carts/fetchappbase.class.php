@@ -26,26 +26,40 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 		public function __construct(){
 			$this->debug = true;
+			$this->scheduled_sync = false;
+			$this->fetchapp_send_incomplete_orders = false;
 
 			// Default options
 			add_option( 'fetchapp_token', '' );
-			add_option( 'fetchapp_token', '' );
+			add_option( 'fetchapp_key', '' );
 			add_option( 'fetchapp_debug_mode', 0);
+			add_option( 'fetchapp_scheduled_sync', 0);
+			add_option( 'fetchapp_send_incomplete_orders', 0);
 
 
-			if ( get_option( 'fetchapp_token' ) ):
-				$fetch_key_option = get_option( 'fetchapp_key' );
-				$this->fetch_key = $fetch_key_option['text_string'];
+			if ( get_option( 'fetchapp_key' ) ):
+				$fetchapp_key_option = get_option( 'fetchapp_key' );
+				$this->fetch_key = $fetchapp_key_option['text_string'];
 			endif;
 
 			if ( get_option( 'fetchapp_token' ) ):
-				$fetch_token_option = get_option( 'fetchapp_token' );
-				$this->fetch_token = $fetch_token_option['text_string'];
+				$fetchapp_token_option = get_option( 'fetchapp_token' );
+				$this->fetch_token = $fetchapp_token_option['text_string'];
 			endif;
 
 			if ( get_option( 'fetchapp_debug_mode' ) ):
 				$debug_option = get_option( 'fetchapp_debug_mode' );
 				$this->debug = $debug_option['text_string'];
+			endif;
+
+			if ( get_option( 'fetchapp_scheduled_sync' ) ):
+				$fetchapp_scheduled_sync_option = get_option( 'fetchapp_scheduled_sync' );
+				$this->scheduled_sync = $fetchapp_scheduled_sync_option['text_string'];
+			endif;
+
+			if ( get_option( 'fetchapp_send_incomplete_orders' ) ):
+				$fetchapp_send_incomplete_orders_option = get_option( 'fetchapp_send_incomplete_orders' );
+				$this->fetchapp_send_incomplete_orders = $fetchapp_send_incomplete_orders_option['text_string'];
 			endif;
 
 			$this->fetchApp = new FetchApp\API\FetchApp();
@@ -212,6 +226,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 					update_option('fetchapp_scheduled_sync', '0');
 				endif;
 
+				if(isset($_POST['fetchapp_send_incomplete_orders']) && $_POST['fetchapp_send_incomplete_orders']):
+					update_option('fetchapp_send_incomplete_orders', '1');
+				else:
+					update_option('fetchapp_send_incomplete_orders', '0');
+				endif;
+
 				$this->message = "Settings Updated";
 				$this->showMessage("Settings Updated");
 				// TODO: Validate Key / Token
@@ -246,7 +266,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			register_setting( 'fetchapp_token', 'fetchapp_token', array($this, 'fetchapp_token_validate') );
 			register_setting( 'fetchapp_debug_mode', 'fetchapp_debug_mode', array($this, 'fetchapp_debug_validate') );
 			register_setting( 'fetchapp_scheduled_sync', 'fetchapp_scheduled_sync', array($this, 'fetchapp_debug_validate') );
-
+			register_setting( 'fetchapp_send_incomplete_orders', 'fetchapp_send_incomplete_orders', array($this, 'fetchapp_debug_validate') );
 
 			add_settings_section('fetchapp_authentication', 'Authentication', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_key', 'FetchApp API Key', array($this, 'fetchapp_key_string'), 'fetchapp_wc_settings', 'fetchapp_authentication');
@@ -257,6 +277,9 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 			add_settings_section('fetchapp_scheduled_sync_section', 'Scheduled Sync', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_scheduled_sync', 'Sync with FetchApp every hour', array($this, 'fetchapp_scheduled_sync_string'), 'fetchapp_wc_settings', 'fetchapp_scheduled_sync_section');
+
+			add_settings_section('fetchapp_send_incomplete_orders_section', 'Order Status', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
+			add_settings_field('fetchapp_send_incomplete_orders', 'Push incomplete orders to FetchApp', array($this, 'fetchapp_send_incomplete_orders_string'), 'fetchapp_wc_settings', 'fetchapp_send_incomplete_orders_section');
 
 		}
 		
@@ -278,7 +301,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 		public function fetchapp_debug_validate($input){
 			$options = get_option('fetchapp_debug_mode');
-			$options['text_string'] = trim($input['text_string']);
+			$options['text_string'] = trim($input);
 			return $options;
 		}
 
@@ -303,6 +326,11 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			echo "<input id='fetchapp_scheduled_sync' name='fetchapp_scheduled_sync[text_string]' type='checkbox' value='1' ".checked($options['text_string'], 1, false)." />";
 		}
 
+		public function fetchapp_send_incomplete_orders_string() {
+			$options = get_option('fetchapp_send_incomplete_orders');
+			echo "<input id='fetchapp_send_incomplete_orders' name='fetchapp_send_incomplete_orders[text_string]' type='checkbox' value='1' ".checked($options['text_string'], 1, false)." />";
+		}
+
 		/* Prints the box content */
 		public function fetchapp_custom_box_html($post)
 		{
@@ -313,7 +341,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		    $saved = get_post_meta( $post->ID, '_fetchapp_sync', true);
 
 		    if( !$saved )
-		        $saved = 'default';
+		        $saved = 'yes';
 
 		    $fields = array(
 		        'yes'       => __('Sync with FetchApp', 'wpse')
@@ -332,16 +360,14 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		    }
 
 		   $fetchapp_id = get_post_meta( $post->ID, '_fetchapp_id', true);
-		 	
 		 	if($fetchapp_id):
-		 		echo "<br /><label>FetchApp SKU:</label> {$fetchapp_id}";
+		 		if($post->post_type == 'product'):
+			 		echo "<br /><label>FetchApp SKU:</label> <strong>{$fetchapp_id}</strong>";
+		 		else:
+		 			echo "<br /><label>FetchApp Order ID:</label> <strong>{$fetchapp_id}</strong>";
+		 		endif;
 		 	endif;
 		}
 		/* End Admin Screen Functions */
 	}
 endif;
-
-
-
-
-

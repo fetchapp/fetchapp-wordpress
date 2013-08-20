@@ -24,7 +24,7 @@ class OrderStatus extends EnumEmulator
 	/**
      * @return mixed
      */
-    public static function getName($const)
+    public static function getName($const, $className='OrderStatus')
     {
         return parent::getName($const, OrderStatus::$className);
     }
@@ -32,7 +32,7 @@ class OrderStatus extends EnumEmulator
 	/**
      * @return array
      */
-    public static function getOptions()
+    public static function getOptions($className='OrderStatus')
     {
         return parent::getOptions(OrderStatus::$className);
     }
@@ -40,7 +40,7 @@ class OrderStatus extends EnumEmulator
 	/**
      * @return mixed
      */
-    public static function getValue($name)
+    public static function getValue($name, $className='OrderStatus')
     {
         return parent::getValue($name, OrderStatus::$className);
     }

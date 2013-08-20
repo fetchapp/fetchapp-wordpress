@@ -1,6 +1,10 @@
 <?php
+/**
+ * @package FetchApp
+ * @version 1.0
+ */
 /*
-Plugin Name: FetchApp
+Plugin Name: Fetch App
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
@@ -33,16 +37,21 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					$wc_order_id = $wc_order->id;
 				endif;
 
-			    $fetch_order_id = "wc_".$wc_order_id;
+			    $fetch_order_id = $wc_order_id;
 
-			    $order->setOrderID("wc_".$wc_order_id);
+			    $order->setOrderID($wc_order_id);
 			    $order->setFirstName($wc_order->order_custom_fields['_billing_first_name'][0]);
 			    $order->setLastName($wc_order->order_custom_fields['_billing_last_name'][0]);
 			    $order->setEmailAddress($wc_order->order_custom_fields['_billing_email'][0]);
 
 			    $order->setVendorID($fetch_order_id);
-			    // ToDO: need to set currency variable from store settings? 
-//				    $order->setCurrency(FetchApp\API\Currency::USD);
+			    // ToDO: The currency setting doesn't seem to take in FetchApp
+			    /*$woocommerce_currency = get_option('woocommerce_currency');
+				$currency_refl = new ReflectionClass('FetchApp\API\Currency');
+
+			    $order->setCurrency($currency_refl->getConstant($woocommerce_currency) );
+			    */
+			    
 			    $items = array();
 
 			    $order_items = $this->getWCOrderItems($wc_order);
@@ -79,10 +88,18 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$fetch_order = $this->fetchApp->getOrder($fetch_saved_order_id);
 
 				if(! $fetch_order->getOrderID() ):
+				    if($this->debug):
+				    	$this->showMessage("Creating new Order in FetchApp: ".$fetch_order_id);
+				    endif;
+
 				    $response = $order->create($items, $send_email);
 
 					update_post_meta( $wc_order_id, '_fetchapp_id', $fetch_order_id );
 				else:
+					if($this->debug):
+				    	$this->showMessage("Updating Order in FetchApp: ".$fetch_order->getOrderID());
+				    endif;
+
 					$order->setOrderID($fetch_order->getOrderID() );
 				    $response = $order->update($items, $send_email);
 					//update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_saved_order_id );
@@ -91,16 +108,19 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				/* Push to Fetch */
 
 			    if($this->debug):
-	    			$this->showMessage("FetchApp Debug:".print_r($response, true) );
+			    	if($response === true):
+		    			$this->showMessage("FetchApp: Success");
+			    	else:
+		    			$this->showMessage("FetchApp: ".print_r($response, true) );
+			    	endif;
 				endif;
 			}
 			catch (Exception $e){
 				if($this->debug):
 				    // This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
-	    			$this->showMessage("FetchApp Debug:".$e->getMessage() );
+	    			$this->showMessage("FetchApp: ".$e->getMessage() );
 				endif;
 			}
-
 		}
 
 		public function getWCOrderItems($order){
@@ -119,6 +139,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 							) ); 
 
 			$items = array();
+
 			foreach ( $order_item_results as $item_id):
 				$item_data = array('order_item_id' => $item_id);
 
@@ -156,16 +177,17 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$wc_sku = get_post_meta($wc_product_id, '_sku', true);
 
 				if(! $wc_sku):
-					$wc_sku = 'wc_'.$wc_product_id; 
+					$wc_sku = $wc_product_id; 
 				endif;
+
+
 
 				/* Validation for create must include price, and name. SKU can be generated from product ID */
 
 				$fetch_sku = get_post_meta($wc_product_id, '_fetchapp_id', true);
-
 				$fetch_product = $this->fetchApp->getProduct($fetch_sku);
 
-				if($fetch_product && ! $fetch_product->getProductID() ):
+				if(! $fetch_product || ! $fetch_product->getProductID() ):
 
 					$fetch_product = new FetchApp\API\Product();
 
@@ -194,13 +216,13 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				endif;
 
 			    if($this->debug):
-	    			$this->showMessage("FetchApp Debug:".print_r($response, true) );
+	    			$this->showMessage("FetchApp: ".print_r($response, true) );
 				endif;
 			}
 			catch (Exception $e){
 
 			    // This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
-    			$this->showMessage("FetchApp Debug:".$e->getMessage() );
+    			$this->showMessage("FetchApp: ".$e->getMessage() );
 			}
 		}
 
@@ -220,9 +242,9 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			$post_id;
 			if($existing_wc_order):
 				if($this->debug):
-	    			$this->showMessage("FetchApp Debug:".print_r($fetch_order->getFirstName(), true) );
-	    			$this->showMessage("FetchApp Debug:".print_r($existing_wc_order, true) );
-	    			$this->showMessage("FetchApp Debug:".print_r("Updating order: {$existing_wc_order->ID}", true) );
+	    		//	$this->showMessage("FetchApp: ".print_r($fetch_order->getFirstName(), true) );
+	    		//	$this->showMessage("FetchApp: ".print_r($existing_wc_order, true) );
+	    			$this->showMessage("FetchApp: ".print_r("Updating order in WordPress: {$existing_wc_order->ID}", true) );
 				endif;
 
 				$post_id = $existing_wc_order->ID;
@@ -247,7 +269,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$post_id = wp_insert_post($new_post);
 
 				if($this->debug):
-	    			$this->showMessage("FetchApp Debug:".print_r("Created order: {$post_id}", true) );
+	    			$this->showMessage("FetchApp: ".print_r("Created order: {$post_id}", true) );
 				endif;
 				
 			endif;
@@ -277,22 +299,25 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			$order_item_meta_table = $wpdb->prefix .'woocommerce_order_itemmeta';
 
 			/* Delete Existing Order Items */
-			// Get Current Order Items
-			// Delete their meta
-			// Delete them
-			 $querystr = "
-				    SELECT $wpdb->posts.* 
-				    FROM $wpdb->posts, $wpdb->postmeta
-				    WHERE $wpdb->posts.ID = $wpdb->postmeta.post_id 
-				    AND $wpdb->postmeta.meta_key = 'tag' 
-				    AND $wpdb->postmeta.meta_value = 'email' 
-				    AND $wpdb->posts.post_status = 'publish' 
-				    AND $wpdb->posts.post_type = 'post'
-				    AND $wpdb->posts.post_date < NOW()
-				    ORDER BY $wpdb->posts.post_date DESC
-				 ";
+			/* ToDO: Double Check this */
 
-				// $pageposts = $wpdb->get_results($querystr, OBJECT);
+			// Get Current Order Items
+			$order_item_objects = $this->getWCOrderItems($existing_wc_order);
+
+			$order_item_array = array();
+			foreach($order_item_objects as $order_item):
+				$order_item_array[] = $order_item['order_item_id'];
+			endforeach;
+
+			$order_item_id_string = implode($order_item_array, ", ");
+
+			// Delete their meta
+			$delete_meta_sql = "DELETE FROM {$order_item_meta_table} WHERE order_item_id IN ({$order_item_id_string})";
+			$delete_response = $wpdb->get_results($delete_meta_sql, OBJECT);
+
+			// Delete the order items 
+			$delete_sql = "DELETE FROM {$order_item_table} WHERE order_id = {$post_id}";
+			$delete_response = $wpdb->get_results($delete_sql, OBJECT);
 
 			foreach($fetch_items as $fetch_item):
 				$fetch_product_id = $fetch_item->getSKU();
@@ -330,7 +355,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$order_item_meta = array(
 										'order_item_id' => $order_item_id,
 										'meta_key' => '_line_subtotal',
-										'meta_value' => $fetch_item->getPrice()
+										'meta_value' => (float)$fetch_item->getPrice()
 									);
 
 				$wpdb->insert($order_item_meta_table, $order_item_meta);
@@ -338,7 +363,39 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$order_item_meta = array(
 										'order_item_id' => $order_item_id,
 										'meta_key' => '_line_total',
-										'meta_value' => $fetch_item->getPrice()
+										'meta_value' => (float)$fetch_item->getPrice()
+									);
+
+				$wpdb->insert($order_item_meta_table, $order_item_meta);
+
+				$order_item_meta = array(
+										'order_item_id' => $order_item_id,
+										'meta_key' => '_tax_class',
+										'meta_value' => ''
+									);
+
+				$wpdb->insert($order_item_meta_table, $order_item_meta);
+
+				$order_item_meta = array(
+										'order_item_id' => $order_item_id,
+										'meta_key' => '_variation_id',
+										'meta_value' => ''
+									);
+
+				$wpdb->insert($order_item_meta_table, $order_item_meta);
+
+				$order_item_meta = array(
+										'order_item_id' => $order_item_id,
+										'meta_key' => '_line_subtotal_tax',
+										'meta_value' => ''
+									);
+
+				$wpdb->insert($order_item_meta_table, $order_item_meta);
+
+				$order_item_meta = array(
+										'order_item_id' => $order_item_id,
+										'meta_key' => '_line_tax',
+										'meta_value' => ''
 									);
 
 				$wpdb->insert($order_item_meta_table, $order_item_meta);
@@ -387,7 +444,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			update_post_meta( $post_id, '_visibility', 'visible');
 			update_post_meta( $post_id, '_sold_individually', 'yes');
 
-			return $wc_product;
+			return get_post($post_id);
 		}
 
 		/* WC Specific */
@@ -530,29 +587,44 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$wc_order_post = get_post($order_id);
 
 				/* Intentionally Ignore the Sync to Fetch Here */
-				$this->pushOrderToFetch($wc_order_post, true); /* And send an email */
+				if(! $this->fetchapp_send_incomplete_orders): /* If we don't send incomplete orders */
+					
+					$post_status_term_array = wp_get_post_terms( $order_id, 'shop_order_status'); /* Check the term relationship for order status */
+					$post_status_term = array_pop($post_status_term_array);
 
-				/* But then set that this order is in sync */
-				update_post_meta( $order_id, '_fetchapp_sync', 'yes');
+					if($post_status_term && $post_status_term->name != 'completed'): /* If it's not completed, don't send it, so return */
+						return;
+					else:
+						$this->pushOrderToFetch($wc_order_post, true); /* And send an email */
+
+						/* But then set that this order is in sync */
+						update_post_meta( $order_id, '_fetchapp_sync', 'yes');
+					endif;
+				endif;
 			endif;
 		}
 
 		public function fetchapp_save_post($post_id, $post){
+
 			if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ):
 				return;
 			endif;
-
 			if($post->post_type == 'product' || $post->post_type == 'shop_order'):
 				// verify this came from the our screen and with proper authorization,
 				// because save_post can be triggered at other times
-				if ( !wp_verify_nonce( $_POST['fetchapp_noncename'], 'fetchapp_fetchapp_field_nonce' ) ):
-					return;
-				endif;
+				//if (! isset( $_POST['fetchapp_noncename']) || !wp_verify_nonce( $_POST['fetchapp_noncename'], 'fetchapp_fetchapp_field_nonce' ) ):
+				//	return;
+				//endif;
 
 				if ( isset($_POST['_fetchapp_sync']) && $_POST['_fetchapp_sync'] != "" ):
 					update_post_meta( $post_id, '_fetchapp_sync', $_POST['_fetchapp_sync'] );
 				else:
-					update_post_meta( $post_id, '_fetchapp_sync', 'no' );
+					// Check for existing value, if it's not set at all, don't explicitly set no (to default to YES)
+					$sync_with_fetch = get_post_meta( $post_id, '_fetchapp_sync', true);
+
+					if($sync_with_fetch == 'yes'):
+						update_post_meta( $post_id, '_fetchapp_sync', 'no' );
+					endif;
 				endif;
 
 
@@ -564,22 +636,33 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			endif;
 
 			$fetch_sku = get_post_meta($post_id, '_fetchapp_id', true);
-
 			if($post->post_type == 'product'):
 				if($fetch_sku):
 					$wc_product = $this->getWCProductByFetchSKU($fetch_sku);
+				
 					$this->pushProductToFetch($wc_product);
 				else:
 					// Create new product in FetchApp
 					$this->pushProductToFetch($post);			
 				endif;
 			elseif($post->post_type == 'shop_order'):
+				/* Check Order Status */
+				if(! $this->fetchapp_send_incomplete_orders): /* If we don't send incomplete orders */
+					
+					$post_status_term_array = wp_get_post_terms( $post_id, 'shop_order_status'); /* Check the term relationship for order status */
+					$post_status_term = array_pop($post_status_term_array);
+
+					if($post_status_term && $post_status_term->name != 'completed'): /* If it's not completed, don't send it, so return */
+						return;
+					endif;
+				endif;
+
 				if($fetch_sku):
 					$wc_order = $this->getWCOrderByFetchSKU($fetch_sku);
-					$this->pushOrderToFetch($wc_order);
+					$this->pushOrderToFetch($wc_order, true);
 				else:
 					// Create new order in FetchApp
-					$this->pushOrderToFetch($post);			
+					$this->pushOrderToFetch($post, true);			
 				endif;
 			endif;
 		}
@@ -599,7 +682,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					}
 					catch (Exception $e){
 						// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
-		    			$this->showMessage("FetchApp Debug:".$e->getMessage() );
+		    			$this->showMessage("FetchApp: ".$e->getMessage() );
 					}				
 				endif;
 			elseif($post->post_type == 'shop_order'):
@@ -614,7 +697,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					}
 					catch (Exception $e){
 						// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
-		    			$this->showMessage("FetchApp Debug:".$e->getMessage() );
+		    			$this->showMessage("FetchApp: ".$e->getMessage() );
 					}				
 				endif;
 			endif;

@@ -77,7 +77,12 @@ class APIWrapper
             throw new \Exception(curl_error($ch));
         }
         curl_close($ch);
-        return simplexml_load_string($ch_data);
+        
+        if(trim($ch_data) ):
+        	return simplexml_load_string($ch_data);
+        else:
+        	return false;
+        endif;
     }
 	
     /**

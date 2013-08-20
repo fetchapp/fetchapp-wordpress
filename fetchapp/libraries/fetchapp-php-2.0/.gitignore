@@ -1,0 +1,8 @@
+.idea/
+.DS_Store
+
+fetchapp_tests/account.php
+
+fetchapp_tests/order.php
+
+fetchapp_tests/product.php

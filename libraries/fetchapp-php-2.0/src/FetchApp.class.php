@@ -367,4 +367,12 @@ class FetchApp
         $success = true;
         return $success;
     }
+
+    /**
+     * @param bool $ssl_mode_bool
+     */
+    public function setSSLMode($ssl_mode_bool)
+    {
+        APIWrapper::setSSLMode($ssl_mode_bool);
+    }
 }

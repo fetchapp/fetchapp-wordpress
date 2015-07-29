@@ -24,6 +24,11 @@ class APIWrapper
     private static $AuthenticationKey;
 
     /**
+     * @var $UseSSL bool
+     */
+    private static $UseSSL;
+
+    /**
      * @param string $key
      */
     public static function setAuthenticationKey($key)
@@ -37,6 +42,14 @@ class APIWrapper
     public static function setAuthenticationToken($token)
     {
         self::$AuthenticationToken = $token;
+    }
+
+    /**
+     * @param bool $ssl_mode_bool
+     */
+    public static function setSSLMode($ssl_mode_bool)
+    {
+        self::$UseSSL = $ssl_mode_bool;
     }
 
 
@@ -58,6 +71,12 @@ class APIWrapper
             'Authorization: Basic ' . base64_encode($credentials),
         );
 
+        // PRC 07.29.2015
+        // Hack-y way to remove SSL if specified
+        if(self::$UseSSL):
+            $url = str_replace('https://', 'http://', $url);
+        endif;
+
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
@@ -65,17 +84,17 @@ class APIWrapper
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
-        if (!is_null($data)) {
+        if (!is_null($data)):
             // Apply the XML to our curl call
             curl_setopt($ch, CURLOPT_POST, 1);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-        }
+        endif;
 
         $ch_data = curl_exec($ch);
 
-        if (curl_errno($ch)) {
+        if (curl_errno($ch)):
             throw new \Exception(curl_error($ch));
-        }
+        endif;
         curl_close($ch);
         
         if(trim($ch_data) ):

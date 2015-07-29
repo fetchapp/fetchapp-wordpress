@@ -1,14 +1,10 @@
 <?php
-/**
- * @package FetchApp
- * @version 1.0
- */
 /*
-Plugin Name: Fetch App
+Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.0
+Version: 1.0.5
 Author URI: http://www.prcapps.com/
 */
 
@@ -92,7 +88,8 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				    	$this->showMessage("Creating new Order in FetchApp: ".$fetch_order_id);
 				    endif;
 
-				    $response = $order->create($items, $send_email);
+				    // Always send an email if it's a new order
+				    $response = $order->create($items, true);
 
 					update_post_meta( $wc_order_id, '_fetchapp_id', $fetch_order_id );
 				else:
@@ -312,9 +309,10 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			$order_item_id_string = implode($order_item_array, ", ");
 
 			// Delete their meta
-			$delete_meta_sql = "DELETE FROM {$order_item_meta_table} WHERE order_item_id IN ({$order_item_id_string})";
-			$delete_response = $wpdb->get_results($delete_meta_sql, OBJECT);
-
+			if(! empty($order_item_array)):
+				$delete_meta_sql = "DELETE FROM {$order_item_meta_table} WHERE order_item_id IN ({$order_item_id_string})";
+				$delete_response = $wpdb->get_results($delete_meta_sql, OBJECT);
+			endif;
 			// Delete the order items 
 			$delete_sql = "DELETE FROM {$order_item_table} WHERE order_id = {$post_id}";
 			$delete_response = $wpdb->get_results($delete_sql, OBJECT);
@@ -439,6 +437,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			update_post_meta( $post_id, '_price', (float)$fetch_product->getPrice()  );
 			update_post_meta( $post_id, '_regular_price', (float)$fetch_product->getPrice()  );
 			update_post_meta( $post_id, '_virtual', 'yes' );
+			update_post_meta( $post_id, '_downloadable', 'yes' );
 			update_post_meta( $post_id, '_fetchapp_id', (string)$fetch_product->getSKU() );
 			update_post_meta( $post_id, '_fetchapp_sync', 'yes' );
 			update_post_meta( $post_id, '_visibility', 'visible');
@@ -600,6 +599,11 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 						/* But then set that this order is in sync */
 						update_post_meta( $order_id, '_fetchapp_sync', 'yes');
 					endif;
+				else:
+					$this->pushOrderToFetch($wc_order_post, true); /* And send an email */
+
+					/* But then set that this order is in sync */
+					update_post_meta( $order_id, '_fetchapp_sync', 'yes');
 				endif;
 			endif;
 		}
@@ -708,10 +712,18 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			parent::init_hooks();
 
 			/* These hooks are defined in this subclass */
-			add_action('woocommerce_thankyou', array($this, 'fetchapp_wc_checkout') );
+			//add_action('woocommerce_thankyou', array($this, 'fetchapp_wc_checkout') );
 			add_action( 'save_post', array($this, 'fetchapp_save_post'), 20, 2 );
 			add_action('before_delete_post',  array($this, 'fetchapp_delete_post'), 20);
 			add_action('add_meta_boxes', array($this, 'fetchapp_add_custom_box') );
+
+			add_action('woocommerce_order_status_completed', array($this, 'fetchapp_wc_checkout') );
+			if($this->fetchapp_send_incomplete_orders):
+				add_action('woocommerce_order_status_changed', array($this, 'fetchapp_wc_checkout') );
+			endif;
+
+
+			
 		}
 	}
 endif;

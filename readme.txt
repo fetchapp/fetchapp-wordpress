@@ -3,8 +3,10 @@ Contributors: prcapps
 Donate link: http://www.prcapps.com/
 Tags: fetchapp,woocommerce
 Requires at least: 3.6
-Tested up to: 3.9.1
-Stable tag: 1.0.5
+Tested up to: 5.2.2
+Stable tag: 1.5.0
+WC requires at least: 3.6
+WC tested up to: 3.6.5
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -29,6 +31,43 @@ This plugin provides integration between FetchApp and WooCommerce.
 1. Synchronize your products by click the "Synchronize Products" or "Synchronize Orders" buttons
 
 == Changelog ==
+
+= 1.5.0 =
+* Update to ensure compatibility with WooCommerce 3.6.5 and Wordpress 5.2.2
+* Disabled calls to FetchApp API delete endpoint for products and orders. 
+
+= 1.4.0 =
+* Update to ensure compatibility with WooCommerce 3.6.4 and Wordpress 5.2.1
+
+= 1.3.0 =
+* [New Feature] WooCommerce Products now have a "published date" that matches their "created at" property in FetchApp. 
+
+= 1.2.0 =
+* Resolved issues with Product import from FetchApp.
+
+= 1.1.1 =
+* Added support for Wordpress 5 and PHP 7. Additional bugfixes on settings page. 
+
+= 1.1.0 =
+* Added support for Wordpress 5 and PHP 7. Fixed bugs on settings page. 
+
+= 1.0.12 =
+* Fixed issue where prodcuts would unlink from FetchApp after an order in rare cases.
+
+= 1.0.11 =
+* Update to respect account-level download limits on Orders. 
+
+= 1.0.9 =
+* Update to prevent Fetch sync from removing product descriptions in WooCommerce 
+
+= 1.0.8 =
+* More bugfixes. 
+
+= 1.0.7 =
+* More bugfixes. 
+
+= 1.0.6 =
+* Various bugfixes due to updates in WooCommerce. 
 
 = 1.0.5 =
 * We have made significant enhancements to the plugin to improve plugin stability and functionality. 

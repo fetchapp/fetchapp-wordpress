@@ -105,7 +105,7 @@ class Product
 	/**
      * @return string
      */
-    public function getSKU(){ return $this->SKU; }
+    public function getSKU(){ return (string)$this->SKU; }
    
    	/**
      * @param string $SKU
@@ -115,7 +115,7 @@ class Product
 	/**
      * @return string
      */
-    public function getName(){ return $this->Name; }
+    public function getName(){ return (string)$this->Name; }
     
     /**
      * @param string $Name

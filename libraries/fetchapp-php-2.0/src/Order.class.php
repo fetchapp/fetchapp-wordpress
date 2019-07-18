@@ -282,7 +282,7 @@ class Order
      */
     public function getOrderID()
     {
-        return $this->OrderID;
+        return (int)$this->OrderID;
     }
 
     /**
@@ -550,7 +550,7 @@ class Order
      */
     public function toXML($sendEmailFlag = true)
     {
-        $orderXML = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?>' . '<order></order>');
+        $orderXML = new \SimpleXMLElement('<?xml version="1.0" encoding="UTF-8"?>' . '<order></order>', LIBXML_NOEMPTYTAG);
         $orderXML->addChild("id", $this->OrderID);
         $orderXML->addChild("vendor_id", $this->VendorID);
         $orderXML->addChild("first_name", $this->FirstName);
@@ -573,8 +573,12 @@ class Order
             $expirationDateElement = $orderXML->addChild("expiration_date", $this->ExpirationDate->format(\DateTime::ISO8601));
             $expirationDateElement->addAttribute("type", "datetime");
         }
-        $downloadLimitElement = $orderXML->addChild("download_limit", $this->DownloadLimit);
-        $downloadLimitElement->addAttribute("type", "integer");
+
+        if($this->DownloadLimit > 0) {
+            $downloadLimitElement = $orderXML->addChild("download_limit", $this->DownloadLimit);
+            $downloadLimitElement->addAttribute("type", "integer");
+        }
+        
         $orderXML->addChild("send_email", ($sendEmailFlag ? "true" : "false"));
         $orderItemsElement = $orderXML->addChild("order_items");
         $orderItemsElement->addAttribute("type", "array");

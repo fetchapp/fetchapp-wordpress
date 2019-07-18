@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.0.5
+Version: 1.5.0
 Author URI: http://www.prcapps.com/
 */
 
@@ -29,6 +29,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			$this->scheduled_sync = false;
 			$this->fetchapp_send_incomplete_orders = false;
 			$this->fetchapp_use_ssl = true;
+			$this->pull_from_fetch_happening = false;
 
 			// Default options
 			add_option( 'fetchapp_token', '' );
@@ -41,12 +42,22 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 			if ( get_option( 'fetchapp_key' ) ):
 				$fetchapp_key_option = get_option( 'fetchapp_key' );
-				$this->fetch_key = $fetchapp_key_option['text_string'];
+
+				if(is_array($fetchapp_key_option) && isset($fetchapp_key_option['text_string'])):
+					$fetchapp_key_option = $fetchapp_key_option['text_string'];
+				endif;
+
+				$this->fetch_key = $fetchapp_key_option;
 			endif;
 
 			if ( get_option( 'fetchapp_token' ) ):
 				$fetchapp_token_option = get_option( 'fetchapp_token' );
-				$this->fetch_token = $fetchapp_token_option['text_string'];
+
+				if(is_array($fetchapp_token_option) && isset($fetchapp_token_option['text_string'])):
+					$fetchapp_token_option = $fetchapp_token_option['text_string'];
+				endif;
+
+				$this->fetch_token = $fetchapp_token_option;
 			endif;
 
 			if ( get_option( 'fetchapp_debug_mode' ) ):
@@ -129,28 +140,55 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		}
 
 		public function syncAllProducts(){
-			$fetch_products = $this->pullProductsFromFetch(); 
+			$this->pull_from_fetch_happening = true;
+			$page = 1;
 
-			foreach($fetch_products as $product):
-				$this->insertFetchProduct($product);
-			endforeach;
-
+			try{
+				while($fetch_products = $this->pullProductsFromFetch($page, 100) ):
+					if(count($fetch_products) == 0):
+						break;
+					endif;
+					foreach($fetch_products as $product):
+						$this->insertFetchProduct($product);
+					endforeach;
+					$page++;
+				endwhile;
+			}
+			catch (Exception $e){
+				// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
+    			$this->showMessage("FetchApp: Error Pulling Products:".$e->getMessage() );
+			}
+			$this->pull_from_fetch_happening = false;
 
 			$wc_products = $this->getWCProducts(); /* Get WC Products */
 
 			foreach($wc_products as $product):
 				/* Push to Fetch */
 				$this->pushProductToFetch($product);
-			endforeach;				
+			endforeach;		
 		}
 
 		public function syncAllOrders(){
-			$fetch_orders = $this->pullOrdersFromFetch(); /* Need Product API Code */
+			$this->pull_from_fetch_happening = true;
+			$page = 1;
 
-			foreach($fetch_orders as $order):
-				$this->insertFetchOrder($order);
-			endforeach;
+			try{
+				while($fetch_orders = $this->pullOrdersFromFetch($page, 100) ):
+					if(count($fetch_orders) == 0):
+						break;
+					endif;
+					foreach($fetch_orders as $order):
+						$this->insertFetchOrder($order);
+					endforeach;
+					$page++;
+				endwhile;
+			}
+			catch (Exception $e){
+				// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
+    			$this->showMessage("FetchApp: Error Pulling Orders:".$e->getMessage() );
+			}
 
+			$this->pull_from_fetch_happening = false;
 
 			$wc_orders = $this->getWCOrders(); /* Get WC Orders */
 
@@ -160,10 +198,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 				if(! $this->fetchapp_send_incomplete_orders): /* If we don't send incomplete orders */
 					
-					$post_status_term_array = wp_get_post_terms( $order_id, 'shop_order_status'); /* Check the term relationship for order status */
-					$post_status_term = array_pop($post_status_term_array);
-
-					if($post_status_term && $post_status_term->name != 'completed'): /* If it's not completed, don't send it, so return */
+					if($order->post_status != 'wc-completed'): /* If it's not completed, don't send it, so return */
 						continue;
 					else:
 						$this->pushOrderToFetch($order, false); /* And send an email */
@@ -180,10 +215,10 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			endforeach;		
 		}
 
-		public function pullProductsFromFetch(){
+		public function pullProductsFromFetch($page, $per_page){
 			$products = array();
 			try{
-			    $products = $this->fetchApp->getProducts();
+			    $products = $this->fetchApp->getProducts($per_page, $page);
 			}
 			catch (Exception $e){
 				// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
@@ -192,10 +227,11 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			return $products;
 		}
 
-		public function pullOrdersFromFetch(){
+		public function pullOrdersFromFetch($page, $per_page){
 			$orders = array();
 			try{
-			    $orders = $this->fetchApp->getOrders();
+				// 2 = Order Status All
+			    $orders = $this->fetchApp->getOrders(2, $per_page, $page);
 			}
 			catch (Exception $e){
 				// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
@@ -212,7 +248,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		}
 
 		public function doFetchAppScheduledSync(){
-			if($fetchapp_scheduled_sync = get_option('fetchapp_scheduled_sync') && isset($fetchapp_scheduled_sync['text_string']) && $fetchapp_scheduled_sync['text_string'] == '1'):
+			if($fetchapp_scheduled_sync = get_option('fetchapp_scheduled_sync') && isset($fetchapp_scheduled_sync) && $fetchapp_scheduled_sync == '1'):
 				$this->syncAllProducts();
 				$this->syncAllOrders();
 			endif;
@@ -340,13 +376,13 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 		public function fetchapp_token_validate($input){
 			$options = get_option('fetchapp_token');
-			$options['text_string'] = trim($input['text_string']);
+			$options = trim($input);
 			return $options;
 		}
 
 		public function fetchapp_key_validate($input){
 			$options = get_option('fetchapp_key');
-			$options['text_string'] = trim($input['text_string']);
+			$options = trim($input);
 			return $options;
 		}
 
@@ -366,33 +402,43 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 		public function fetchapp_key_string() {
 			$options = get_option('fetchapp_key');
-			echo "<input id='fetchapp_key_string' name='fetchapp_key[text_string]' size='40' type='text' value='{$options['text_string']}' />";
+
+			if(is_array($options) && isset($options['text_string'])):
+				$options = $options['text_string'];
+			endif;
+
+			echo "<input id='fetchapp_key_string' name='fetchapp_key' size='40' type='text' value='{$options}' />";
 		}
 
 
 		public function fetchapp_token_string() {
 			$options = get_option('fetchapp_token');
-			echo "<input id='fetchapp_token' name='fetchapp_token[text_string]' size='40' type='text' value='{$options['text_string']}' />";
+
+			if(is_array($options) && isset($options['text_string'])):
+				$options = $options['text_string'];
+			endif;
+
+			echo "<input id='fetchapp_token' name='fetchapp_token' size='40' type='text' value='{$options}' />";
 		}
 
 		public function fetchapp_debug_string() {
 			$options = get_option('fetchapp_debug_mode');
-			echo "<input id='fetchapp_debug_mode' name='fetchapp_debug_mode[text_string]' type='checkbox' value='1' ".checked($options, 1, false)." />";
+			echo "<input id='fetchapp_debug_mode' name='fetchapp_debug_mode' type='checkbox' value='1' ".checked($options, 1, false)." />";
 		}
 
 		public function fetchapp_use_ssl_string() {
 			$options = get_option('fetchapp_use_ssl');
-			echo "<input id='fetchapp_use_ssl' name='fetchapp_use_ssl[text_string]' type='checkbox' value='1' ".checked($options, 1, false)." />";
+			echo "<input id='fetchapp_use_ssl' name='fetchapp_use_ssl' type='checkbox' value='1' ".checked($options, 1, false)." />";
 		}
 
 		public function fetchapp_scheduled_sync_string() {
 			$options = get_option('fetchapp_scheduled_sync');
-			echo "<input id='fetchapp_scheduled_sync' name='fetchapp_scheduled_sync[text_string]' type='checkbox' value='1' ".checked($options, 1, false)." />";
+			echo "<input id='fetchapp_scheduled_sync' name='fetchapp_scheduled_sync' type='checkbox' value='1' ".checked($options, 1, false)." />";
 		}
 
 		public function fetchapp_send_incomplete_orders_string() {
 			$options = get_option('fetchapp_send_incomplete_orders');
-			echo "<input id='fetchapp_send_incomplete_orders' name='fetchapp_send_incomplete_orders[text_string]' type='checkbox' value='1' ".checked($options, 1, false)." />";
+			echo "<input id='fetchapp_send_incomplete_orders' name='fetchapp_send_incomplete_orders' type='checkbox' value='1' ".checked($options, 1, false)." />";
 		}
 
 		/* Prints the box content */
@@ -408,15 +454,23 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		        $saved = 'yes';
 
 		    $fields = array(
-		        'yes'       => __('Sync with FetchApp', 'wpse')
+		        'yes'       => __('Sync with FetchApp', 'wpse'),
 		    );
+
+		    $checked_yes = ""; 
+		    $checked_no = "checked='checked'"; 
+		    if($saved == 'yes'):
+		    	$checked_yes = "checked='checked'";
+		    	$checked_no = "";
+		    endif;
 
 		    foreach($fields as $key => $label)
 		    {
 		        printf(
-		            '<input type="checkbox" name="_fetchapp_sync" value="%1$s" id="_fetchapp_sync[%1$s]" %3$s />'.
 		            '<label for="_fetchapp_sync[%1$s]"> %2$s ' .
-		            '</label><br>',
+		            '</label><br>'.
+		            '<input id="fetchapp_yes" type="radio" name="_fetchapp_sync" value="%1$s" id="_fetchapp_sync[%1$s]" '.$checked_yes.' /> <label for="fetchapp_yes">Yes</label> <br/>'.
+		            '<input id="fetchapp_no" type="radio" name="_fetchapp_sync" value="no" id="_fetchapp_sync[%1$s]" '.$checked_no.'  /> <label for="fetchapp_no">No</label>',
 		            esc_attr($key),
 		            esc_html($label),
 		            checked($saved, $key, false)

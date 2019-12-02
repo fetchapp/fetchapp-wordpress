@@ -4,9 +4,9 @@ Donate link: http://www.prcapps.com/
 Tags: fetchapp,woocommerce
 Requires at least: 3.6
 Tested up to: 5.3.0
-Stable tag: 1.6.0
+Stable tag: 1.6.1
 WC requires at least: 3.6
-WC tested up to: 3.8.1
+WC tested up to: 3.8.0
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -32,7 +32,7 @@ This plugin provides integration between FetchApp and WooCommerce.
 
 == Changelog ==
 
-= 1.6.0 =
+= 1.6.1 =
 * Update to ensure compatibility with WooCommerce 3.8.1 and Wordpress 5.3
 
 = 1.5.0 =

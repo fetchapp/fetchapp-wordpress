@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.7.1
+Version: 1.7.2
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.5.1
@@ -350,7 +350,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 
 				$wc_product = $this->getWCProductByFetchSKU($fetch_product_id);
 
-				if(! $wc_product):
+				if(! $wc_product || ! is_object($wc_product)):
 					continue;
 				endif;
 

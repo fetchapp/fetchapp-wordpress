@@ -282,7 +282,8 @@ class Order
      */
     public function getOrderID()
     {
-        return (int)$this->OrderID;
+        // PRC 01.2021
+        return (string)$this->OrderID;
     }
 
     /**

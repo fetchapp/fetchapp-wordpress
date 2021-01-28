@@ -4,10 +4,10 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.7.2
+Version: 1.8.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
-WC tested up to: 4.5.1
+WC tested up to: 4.9.1
 */
 
 $class_path = plugin_dir_path( __FILE__ );
@@ -17,8 +17,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 
 	class WC_FetchApp extends WP_FetchAppBase{
 		public function __construct() {
-			parent::__construct();
-			
+			parent::__construct();			
 		}
 
 		/* Woocommerce FetchApp Actions */
@@ -29,20 +28,40 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 
 			    $wc_order->order_custom_fields = get_post_meta( $wc_order->ID );
 
-			    if(isset($wc_order->ID) && $wc_order->ID):
-					$wc_order_id = $wc_order->ID;
+				// PRC 01.2021
+			    $wc_order_number_for_fetch = false;
+			    $wc_order_post_id = false;
+				if($this->fetchapp_sync_order_number):
+					$wc_order_for_lookup = $wc_order;
+					if(! is_a($wc_order_for_lookup, WC_Order::class)):
+						$wc_order_for_lookup = new WC_Order($wc_order->ID);
+					endif;
+
+					$wc_order_number_for_fetch = $wc_order_for_lookup->get_order_number();
 				else:
-					$wc_order_id = $wc_order->get_id();
+				    if(isset($wc_order->ID) && $wc_order->ID):
+						$wc_order_number_for_fetch = $wc_order->ID;
+					else:
+						$wc_order_number_for_fetch = $wc_order->get_id();
+					endif;
 				endif;
 
-			    $fetch_order_id = $wc_order_id;
+				// PRC 01.2021
+			    if(isset($wc_order->ID) && $wc_order->ID):
+					$wc_order_post_id = $wc_order->ID;
+				else:
+					$wc_order_post_id = $wc_order->get_id();
+				endif;
 
-			    $order->setOrderID($wc_order_id);
+				// var_dump("ORDER ID FOR FETCH:".$wc_order_number_for_fetch);
+				// var_dump("POST ID:".$wc_order_post_id);
+
+			    $order->setOrderID($wc_order_number_for_fetch); // was wc_order_id 01.2021
 			    $order->setFirstName($wc_order->order_custom_fields['_billing_first_name'][0]);
 			    $order->setLastName($wc_order->order_custom_fields['_billing_last_name'][0]);
 			    $order->setEmailAddress($wc_order->order_custom_fields['_billing_email'][0]);
 
-			    $order->setVendorID($fetch_order_id);
+			    $order->setVendorID($wc_order_number_for_fetch);
 
 			    // ToDO: The currency setting doesn't seem to take in FetchApp
 			    /*$woocommerce_currency = get_option('woocommerce_currency');
@@ -79,7 +98,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					    	$order_item = new FetchApp\API\OrderItem();
 							$order_item->setSKU($fetch_sku);
 							$order_item->setProductName($product->get_title());
-							$order_item->setOrderID($fetch_order_id);
+							$order_item->setOrderID($wc_order_number_for_fetch);
 
 							if($price):
 								$order_item->setPrice((float)$price);
@@ -91,24 +110,25 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					endif;
 				endforeach;
 
-				$fetch_saved_order_id = get_post_meta($wc_order_id, '_fetchapp_id', true);
+				$fetch_saved_order_id = get_post_meta($wc_order_post_id, '_fetchapp_id', true);
 
+				// PRC NOTE: CHECK THIS WITH V3 Upgrade for difference between Vendor and Order ID 
 				$fetch_order = $this->fetchApp->getOrder($fetch_saved_order_id);
 
 				$response = false;
-				if(! $fetch_order->getOrderID() ):
+				if(! $fetch_order || ! $fetch_order->getOrderID() ):
 				    if(count($items) == 0):
 					    if($this->debug):
-					    	$this->showMessage("No FetchApp line items, skipping: ".$fetch_order_id);
+					    	$this->showMessage("No FetchApp line items, skipping: ".$wc_order_number_for_fetch);
 					   	endif;
 				    else:
 				    	if($this->debug):
-					    	$this->showMessage("Creating new Order in FetchApp: ".$fetch_order_id);
+					    	$this->showMessage("Creating new Order in FetchApp: ".$wc_order_number_for_fetch);
 					    endif;
 					    // Always send an email if it's a new order
 					    $response = $order->create($items, true);
 
-						update_post_meta( $wc_order_id, '_fetchapp_id', $fetch_order_id );
+						update_post_meta( $wc_order_post_id, '_fetchapp_id', $wc_order_number_for_fetch );
 				    endif;
 				else:
 				    if(count($items) == 0):
@@ -120,6 +140,12 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					    	$this->showMessage("Updating Order in FetchApp: ".$fetch_order->getOrderID());
 					    endif;
 						$order->setOrderID($fetch_order->getOrderID() );
+
+						// PRC 01.2021 - Do I want to do this? 
+						// On update, do not change Vendor ID
+						$order->setVendorID($fetch_order->getVendorID() );
+						// $order->setVendorID($wc_order_number_for_fetch);
+
 					    $response = $order->update($items, $send_email);
 						//update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_saved_order_id );
 					endif;
@@ -269,6 +295,8 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			if($existing_wc_order):
 				if($this->debug):
 	    			$this->showMessage("FetchApp: ".print_r("Updating order in WordPress: {$existing_wc_order->ID}", true) );
+	    			// $this->showMessage("FetchApp: ".print_r("Updating order in WordPress1: {$fetch_order_id}", true) );
+	    			// $this->showMessage("FetchApp: ".print_r("Updating order in WordPress2: {$fetch_order->getVendorID()}", true) );
 				endif;
 
 				$post_id = $existing_wc_order->ID;
@@ -294,6 +322,8 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 
 				if($this->debug):
 	    			$this->showMessage("FetchApp: ".print_r("Created order in Wordpress: {$post_id}", true) );
+					// $this->showMessage("FetchApp: ".print_r("Created order in WordPress1: {$fetch_order_id}", true) );
+					// $this->showMessage("FetchApp: ".print_r("Created order in WordPress2: {$fetch_order->getVendorID()}", true) );
 				endif;
 				
 			endif;

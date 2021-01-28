@@ -4,10 +4,10 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.7.2
+Version: 1.8.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
-WC tested up to: 4.5.1
+WC tested up to: 4.9.1
 */
 
 $class_path = plugin_dir_path( __FILE__ );
@@ -40,6 +40,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			add_option( 'fetchapp_scheduled_sync', 0);
 			add_option( 'fetchapp_send_incomplete_orders', 0);
 			add_option( 'fetchapp_use_ssl', 1);
+			add_option( 'fetchapp_sync_order_number', 0);
 
 
 			if ( get_option( 'fetchapp_key' ) ):
@@ -90,9 +91,17 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 				$this->fetchapp_send_incomplete_orders = $fetchapp_send_incomplete_orders_option;
 			endif;
 
+			if ( get_option( 'fetchapp_sync_order_number' ) ):
+				$fetchapp_sync_order_number_option = get_option( 'fetchapp_sync_order_number' );
+				$this->fetchapp_sync_order_number = $fetchapp_sync_order_number_option;
+			else:
+				$this->fetchapp_sync_order_number = 0;
+			endif;
+
 			// var_dump("Debug: ".($this->debug));
 			// var_dump("Sync: ".($this->scheduled_sync));
 			// var_dump("Inc: ".($this->fetchapp_send_incomplete_orders));
+			// var_dump("fetchapp_sync_order_number: ".($this->fetchapp_sync_order_number));
 
 
 			$this->fetchApp = new FetchApp\API\FetchApp();
@@ -141,7 +150,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			return "No cart selected.";
 		}
 
-		public function syncAllProducts(){
+		public function pullAllProducts(){
 			$this->pull_from_fetch_happening = true;
 			$page = 1;
 
@@ -161,7 +170,9 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
     			$this->showMessage("FetchApp: Error Pulling Products:".$e->getMessage() );
 			}
 			$this->pull_from_fetch_happening = false;
+		}
 
+		public function pushAllProducts(){
 			$wc_products = $this->getWCProducts(); /* Get WC Products */
 
 			foreach($wc_products as $product):
@@ -170,7 +181,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			endforeach;		
 		}
 
-		public function syncAllOrders(){
+		public function syncAllProducts(){
+			$this->pullAllProducts();
+			$this->pushAllProducts();
+		}
+
+		public function pullAllOrders(){
 			$this->pull_from_fetch_happening = true;
 			$page = 1;
 
@@ -189,9 +205,10 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 				// This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
     			$this->showMessage("FetchApp: Error Pulling Orders:".$e->getMessage() );
 			}
-
 			$this->pull_from_fetch_happening = false;
+		}
 
+		public function pushAllOrders(){
 			$wc_orders = $this->getWCOrders(); /* Get WC Orders */
 
 			foreach($wc_orders as $order):
@@ -214,7 +231,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 					/* But then set that this order is in sync */
 					update_post_meta( $order_id, '_fetchapp_sync', 'yes');
 				endif;
-			endforeach;		
+			endforeach;	
+		}
+
+		public function syncAllOrders(){
+			$this->pullAllOrders();
+			$this->pushAllOrders();	
 		}
 
 		public function pullProductsFromFetch($page, $per_page){
@@ -316,6 +338,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 					update_option('fetchapp_use_ssl', '0');
 				endif;
 
+				if(isset($_POST['fetchapp_sync_order_number']) && $_POST['fetchapp_sync_order_number']):
+					update_option('fetchapp_sync_order_number', '1');
+				else:
+					update_option('fetchapp_sync_order_number', '0');
+				endif;
+
 				$this->message = "Settings Updated";
 				$this->showMessage("Settings Updated");
 				// TODO: Validate Key / Token
@@ -324,12 +352,31 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			if(isset($_POST['sync_orders'])):
 				$this->syncAllOrders();
 				$this->showMessage("Orders synchronized with FetchApp");
+			endif;
 
+			if(isset($_POST['pull_orders'])):
+				$this->pullAllOrders();
+				$this->showMessage("Orders pulled from FetchApp");
+			endif;
+
+			if(isset($_POST['push_orders'])):
+				$this->pushAllOrders();
+				$this->showMessage("Orders pushed to FetchApp");
 			endif;
 
 			if(isset($_POST['sync_products'])):
 				$this->syncAllProducts();
 				$this->showMessage("Products synchronized with FetchApp");
+			endif;
+
+			if(isset($_POST['pull_products'])):
+				$this->pullAllProducts();
+				$this->showMessage("Products pulled from FetchApp");
+			endif;
+
+			if(isset($_POST['push_products'])):
+				$this->pushAllProducts();
+				$this->showMessage("Products pushed to FetchApp");
 			endif;
 
 			echo "<div>
@@ -340,8 +387,14 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			echo "<br /><br /><input name=\"update_fetchapp_settings\" type=\"submit\" value=\"Save Settings\" /><br /><br />";
 
 			echo "<h3>Sync Actions</h3>";
-			echo "<input name=\"sync_orders\" type=\"submit\" value=\"Sync Orders\" />";
-			echo "<input name=\"sync_products\" type=\"submit\" value=\"Sync Products\" />";
+			echo "<h4>Orders</h4>";
+			echo "<input name=\"sync_orders\" type=\"submit\" value=\"Sync (Pull + Push) Orders\" /> | ";
+			echo "<input name=\"pull_orders\" type=\"submit\" value=\"Pull Orders\" /> | ";
+			echo "<input name=\"push_orders\" type=\"submit\" value=\"Push Orders\" />";
+			echo "<h4>Products</h4>";
+			echo "<input name=\"sync_products\" type=\"submit\" value=\"Sync (Pull + Push) Products\" /> | ";
+			echo "<input name=\"pull_products\" type=\"submit\" value=\"Pull Products\" /> | ";
+			echo "<input name=\"push_products\" type=\"submit\" value=\"Push Products\" />";
 			echo "</form></div>";
 		}
 
@@ -369,6 +422,9 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
 			add_settings_section('fetchapp_use_ssl_header', 'SSL', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
 			add_settings_field('fetchapp_use_ssl', 'Use SSL to connect to FetchApp', array($this, 'fetchapp_use_ssl_string'), 'fetchapp_wc_settings', 'fetchapp_use_ssl_header');
+
+			add_settings_section('fetchapp_order_sync_header', 'Order Sync', array($this, 'plugin_section_text'), 'fetchapp_wc_settings');
+			add_settings_field('fetchapp_sync_order_number', 'Syncronize Orders to FetchApp based on Order Number', array($this, 'fetchapp_sync_order_number_string'), 'fetchapp_wc_settings', 'fetchapp_order_sync_header');
 
 		}
 		
@@ -431,6 +487,15 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		public function fetchapp_use_ssl_string() {
 			$options = get_option('fetchapp_use_ssl');
 			echo "<input id='fetchapp_use_ssl' name='fetchapp_use_ssl' type='checkbox' value='1' ".checked($options, 1, false)." />";
+		}
+
+		public function fetchapp_sync_order_number_string() {
+			$options = get_option('fetchapp_sync_order_number');
+			echo "<select id='fetchapp_sync_order_number' name='fetchapp_sync_order_number'>";
+				echo "<option value='1'".selected($options, 1, false).">WooCommerce Order Number</option>";
+				echo "<option value='0'".selected($options, 0, false).">Wordpress Post ID</option>";
+			echo "</select>";
+			echo "<div><label for='fetchapp_sync_order_number'>By default, FetchApp for WooCommerce uses the Wordpress Post ID to synchronize orders. You may instead use the WooCommerce Order Number.<label></div>";
 		}
 
 		public function fetchapp_scheduled_sync_string() {

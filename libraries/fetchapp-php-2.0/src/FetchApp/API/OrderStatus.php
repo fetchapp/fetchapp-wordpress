@@ -17,6 +17,10 @@ class OrderStatus extends EnumEmulator
 
     private static $className = "FetchApp\\API\\OrderStatus";
 
+    const open = 0;
+    const expired = 1;
+    const all = 2;
+
     const Open = 0;
     const Expired = 1;
     const All = 2;

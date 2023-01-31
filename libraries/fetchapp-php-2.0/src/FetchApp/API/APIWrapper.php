@@ -14,6 +14,8 @@ namespace FetchApp\API;
 
 class APIWrapper
 {
+    private static $api_url = 'https://pogodan.dev.fetchapp.com/api/v3';
+
 	/**
      * @var $AuthenticationToken String
      */
@@ -64,18 +66,17 @@ class APIWrapper
      * @throws \Exception
      */
     public static function makeRequest($url, $method, $data = null)
-    {
+    {   
+        // PRC 10.2020
+        // Ensure the API URL is only in there once
+        $url = str_replace(self::$api_url, "", $url);
+        $url = self::$api_url.$url;
+
         $credentials = self::$AuthenticationKey . ':' . self::$AuthenticationToken;
         $headers = array(
-            'Content-type: application/xml',
+            'Content-type: application/json',
             'Authorization: Basic ' . base64_encode($credentials),
         );
-
-        // PRC 07.29.2015
-        // Hack-y way to remove SSL if specified
-        if(self::$UseSSL):
-            $url = str_replace('https://', 'http://', $url);
-        endif;
 
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
@@ -85,9 +86,8 @@ class APIWrapper
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 
         if (!is_null($data)):
-            // Apply the XML to our curl call
             curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data) );
         endif;
 
         $ch_data = curl_exec($ch);
@@ -98,7 +98,7 @@ class APIWrapper
         curl_close($ch);
         
         if(trim($ch_data) ):
-        	return simplexml_load_string($ch_data);
+            return json_decode($ch_data);
         else:
         	return false;
         endif;

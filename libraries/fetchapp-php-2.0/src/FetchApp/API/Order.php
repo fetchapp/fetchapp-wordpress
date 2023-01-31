@@ -88,6 +88,9 @@ class Order
      */
     private $items;
 
+    // PRC 10.2020
+    private $send_email;
+
     function __construct()
     {
         $this->items = array();
@@ -282,8 +285,7 @@ class Order
      */
     public function getOrderID()
     {
-        // PRC 01.2021
-        return (string)$this->OrderID;
+        return (int)$this->OrderID;
     }
 
     /**
@@ -375,20 +377,20 @@ class Order
     {
         APIWrapper::verifyReadiness();
         $this->items = $items;
-        $url = "https://app.fetchapp.com/api/v2/orders/create";
-        $data = $this->toXML($sendEmail);
+
+        $url = "/orders";
+
+        $data = $this->toPostData($sendEmail);
+
         $response = APIWrapper::makeRequest($url, "POST", $data);
-        if (isset($response->id)) {
+
+        if (isset($response->order->id)) {
             // It worked, let's fill in the rest of the data
-            $this->setTotal($response->total);
-            $this->setStatus(OrderStatus::getValue($response->status));
-            $this->setProductCount($response->product_count);
-            $this->setLink($response->link["href"]);
-            $this->setCreationDate(new \DateTime($response->created_at));
+            $this->loadFromJSON($response->order);
             return true;
         } else {
             // It failed, let's return the error
-            return $response[0];
+            return $response;
         }
     }
 
@@ -401,20 +403,17 @@ class Order
     {
         APIWrapper::verifyReadiness();
         $this->items = $items;
-        $url = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/update";
-        $data = $this->toXML($sendEmail);
+        $url = "/orders/" . $this->OrderID;
+        $data = $this->toPostData($sendEmail);
         $response = APIWrapper::makeRequest($url, "PUT", $data);
-        if (isset($response->id)) {
+
+        if (isset($response->order->id)) {
             // It worked, let's fill in the rest of the data
-            $this->setTotal($response->total);
-            $this->setStatus(OrderStatus::getValue($response->status));
-            $this->setProductCount($response->product_count);
-            $this->setLink($response->link["href"]);
-            $this->setCreationDate(new \DateTime($response->created_at));
+            $this->loadFromJSON($response->order);
             return true;
         } else {
             // It failed, let's return the error
-            return $response[0];
+            return $response;
         }
     }
 
@@ -424,9 +423,37 @@ class Order
     public function expire()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/expire";
-        $response = APIWrapper::makeRequest($requestURL, "GET");
+
+        $requestURL = "/orders/" . $this->OrderID . "/expire";
+        $response = APIWrapper::makeRequest($requestURL, "POST");
+
 		return $response;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function reopen()
+    {
+        APIWrapper::verifyReadiness();
+
+        $requestURL = "/orders/" . $this->OrderID . "/reopen";
+        $response = APIWrapper::makeRequest($requestURL, "POST");
+
+        return $response;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function resend()
+    {
+        APIWrapper::verifyReadiness();
+
+        $requestURL = "/orders/" . $this->OrderID . "/resend";
+        $response = APIWrapper::makeRequest($requestURL, "POST");
+
+        return $response;
     }
 	
 	/**
@@ -435,8 +462,9 @@ class Order
     public function delete()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/delete";
-        $response = APIWrapper::makeRequest($requestURL, "DELETE");
+        $url = "/orders/" . $this->OrderID;
+        $response = APIWrapper::makeRequest($url, "DELETE");
+
 		return $response;
     }
 	
@@ -444,23 +472,24 @@ class Order
      * @return mixed
      */
     public function sendDownloadEmail($resetExpiration = true, \DateTime $expirationDate = null, $downloadLimit = -1)
-    {
-        APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/send_email?";
-        if ($resetExpiration === false) {
-            $requestURL .= "reset_expiration=false";
-        } else {
-            if ($expirationDate != null) {
-                $requestURL .= "expiration_date=" . $expirationDate->format(\DateTime::ISO8601);
-            }
-            if ($downloadLimit != -1) {
-                $requestURL .= ($expirationDate != null) ? "&" : "";
-                $requestURL .= "download_limit=" . $downloadLimit;
-            }
-        }
-        $requestURL = rtrim($requestURL, '?');
-        $response = APIWrapper::makeRequest($requestURL, "POST");
-        return $response;
+    {   
+        $update_required = false;
+        if($resetExpiration && $expirationDate):
+            $this->setExpirationDate($expirationDate);
+            $update_required = true;
+        endif;
+
+        if($downloadLimit !== -1):
+            $this->setDownloadLimit((int)$downloadLimit);
+            $update_required = true;
+        endif;
+
+        if($update_required):
+            $items = $this->getItems();
+            $this->update($items);
+        endif;
+
+        return $this->resend();
     }
 
     /**
@@ -469,20 +498,15 @@ class Order
     public function getDownloads()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/downloads";
-        $downloads = array();
-        $results = APIWrapper::makeRequest($requestURL, "GET");
-        foreach ($results->download as $d) {
-            $download = new OrderDownload();
-            $download->setDownloadID((string)$d->id);
-            $download->setFileName((string)$d->filename);
-            $download->setSKU((string)$d->product_sku);
-            $download->setOrderID((string)$d->order_id);
-            $download->setOrderItemID((string)$d->order_item_id);
-            $download->setIPAddress((string)$d->ip_address);
-            $download->setDownloadedOn(new \DateTime($d->downloaded_at));
-            $download->setSizeInBytes((int)$d->size_bytes);
 
+        $requestURL = "/orders/" . $this->OrderID . "/downloads";
+        $results = APIWrapper::makeRequest($requestURL, "GET");
+
+        $downloads = array();
+
+        foreach ($results->downloads as $json_download) {
+            $download = new OrderDownload();
+            $download->loadFromJSON($json_download);
             $downloads[] = $download;
         }
         return $downloads;
@@ -512,37 +536,15 @@ class Order
     public function getItems()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/orders/" . $this->OrderID . "/order_items";
+        $requestURL = "/orders/" . $this->OrderID;
         $results = APIWrapper::makeRequest($requestURL, "GET");
         $items = array();
-        foreach ($results->order_item as $item) {
-            $i = new OrderItem();
-            $i->setItemID((string)$item->id);
-            $i->setSKU((string)$item->sku);
-            $i->setOrderID((string)$item->order_id);
-            $i->setProductName((string)$item->product_name);
-            $i->setPrice((float)$item->price);
-            $i->setDownloadCount((int)$item->download_count);
-            if (!isset($item->custom_1['nil'])) {
-                $i->setCustom1($item->custom_1);
-            } else {
-                $i->setCustom1(null);
-            }
-            if (!isset($item->custom_2['nil'])) {
-                $i->setCustom2($item->custom_2);
-            } else {
-                $i->setCustom2(null);
-            }
-            if (!isset($item->custom_3['nil'])) {
-                $i->setCustom3($item->custom_3);
-            } else {
-                $i->setCustom3(null);
-            }
-            $i->setCreationDate(new \DateTime($item->created_at));
-			// $i->setDownloadsRemaining(0); // We don't seem to be getting this back.
 
+        foreach ($results->order->order_items as $item) :
+            $i = new OrderItem();
+            $i->loadFromJSON($item);
             $items[] = $i;
-        }
+        endforeach;
         return $items;
     }
 	
@@ -594,5 +596,80 @@ class Order
 
 
         return $orderXML->asXML();
+    }
+
+    public function toPostData($sendEmailFlag = true){
+        $json_object = new \stdClass();
+        $json_object->id = $this->OrderID;
+        $json_object->vendor_id = $this->VendorID;
+
+        $json_object->first_name = $this->FirstName;
+        $json_object->last_name = $this->LastName;
+
+        $json_object->email = $this->EmailAddress;
+        $json_object->currency = Currency::getName($this->Currency);
+
+        $json_object->custom_1 = $this->getCustom1();
+        $json_object->custom_2 = $this->getCustom2();
+        $json_object->custom_3 = $this->getCustom3();
+
+        if(is_a($this->ExpirationDate, "DateTime")) :
+            $json_object->expiration_date = $this->ExpirationDate->format(\DateTime::ISO8601);
+        endif;
+
+        if($this->DownloadLimit > 0) :
+            $json_object->download_limit = $this->DownloadLimit;
+        endif;
+
+        $json_object->send_email = ($sendEmailFlag ? "true" : "false");
+
+        $json_object->order_items = [];
+
+        foreach ($this->items as $item) :
+            $order_item = $item->toPostData();
+            $json_object->order_items[] = $order_item;
+        endforeach;
+
+        $output = array('order' => $json_object);
+        return $output;
+    }
+
+    public function loadFromJSON($json){
+        if (is_object($json) ) :
+            $this->setOrderID($json->id);
+            $this->setVendorID($json->vendor_id);
+            $this->setFirstName($json->first_name);
+            $this->setLastName($json->last_name);
+            $this->setEmailAddress($json->email);
+            $this->setTotal($json->total);
+            $this->setCurrency(Currency::getValue($json->currency));
+            $this->setStatus(OrderStatus::getValue($json->status));
+            $this->setProductCount($json->product_count);
+            $this->setDownloadCount($json->download_count);
+
+            if($json->expiration_date):
+                $this->setExpirationDate(new \DateTime($json->expiration_date));
+            endif;
+
+            $this->setDownloadLimit($json->download_limit);
+            $this->setCustom1($json->custom_1);
+            $this->setCustom2($json->custom_2);
+            $this->setCustom3($json->custom_3);
+            $this->setCreationDate(new \DateTime($json->created_at));
+            $this->setLink($json->download_url);
+
+            // PRC 10.2020 - Added this behavior
+            if(isset($json->order_items) ):
+                $items = array();
+                foreach($json->order_items as $json_item):
+                    $order_item = new OrderItem();
+                    $order_item->loadFromJSON($json_item);
+                    $items[] = $order_item;
+                endforeach;
+                $this->items = $items;
+            endif;
+        endif;
+        
+        return true;
     }
 }

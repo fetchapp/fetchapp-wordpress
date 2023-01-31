@@ -188,5 +188,21 @@ class OrderDownload
         return $this->SizeInBytes;
     }
 
+    public function loadFromJSON($json){
+        if (is_object($json) ) :
+            $this->setDownloadID($json->id);
+            $this->setFileName($json->filename);
+            $this->setSKU($json->product_sku);
 
+            // TODO: API
+            // $this->setOrderID($json->order_id);
+
+            $this->setOrderItemID($json->order_item_id);
+            $this->setIPAddress($json->ip_address);
+            $this->setDownloadedOn(new \DateTime($json->downloaded_at));
+            $this->setSizeInBytes((int)$json->size_bytes);
+        endif;
+        
+        return true;
+    }
 }

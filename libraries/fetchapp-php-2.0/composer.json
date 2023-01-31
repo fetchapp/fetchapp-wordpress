@@ -1,0 +1,32 @@
+{
+    "name": "fetchapp/fetchapp",
+    "description": "A PHP library for access to version 3.0 of the FetchApp API",
+    "authors": [
+        {
+            "name": "Patrick Conant",
+            "email": "patrick@prcapps.com"
+        },
+        {
+            "name": "Michael Larkin",
+            "email": "mjlarkin@gmail.com"
+        },
+        {
+            "name": "Brendon Dugan",
+            "email": "wishingforayer@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "FetchApp": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": { "FetchApp\\Tests\\": "tests/" }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9",
+        "vlucas/phpdotenv": "^5.3"
+    },
+    "require": {
+    }
+}

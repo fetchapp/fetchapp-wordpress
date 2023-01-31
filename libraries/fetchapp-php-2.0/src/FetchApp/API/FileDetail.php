@@ -154,5 +154,20 @@ class FileDetail {
         return $this->URL;
     }
 
+    public function loadFromJSON($json){
+        if (is_object($json) ) :
+            $this->setFileID($json->id);
+            $this->setFileName($json->filename);
+            $this->setSizeInBytes($json->size_bytes);
+            $this->setContentType($json->content_type);
+
+            // TODO: API
+            // $this->setPermalink($json->permalink);
+            // $this->setURL($json->url);
+        endif;
+        
+        return true;
+    }
+
 
 }

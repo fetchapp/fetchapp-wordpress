@@ -15,6 +15,11 @@ namespace FetchApp\API;
 class OrderItem
 {
     /**
+     * @var $OrderItemID int
+     */
+    private $OrderItemID;
+
+    /**
      * @var $ItemID int
      */
     private $ItemID;
@@ -171,6 +176,22 @@ class OrderItem
     }
 
     /**
+     * @param int $OrderItemID
+     */
+    public function setOrderItemID($OrderItemID)
+    {
+        $this->OrderItemID = $OrderItemID;
+    }
+
+    /**
+     * @return int
+     */
+    public function getOrderItemID()
+    {
+        return $this->OrderItemID;
+    }
+
+    /**
      * @param int $ItemID
      */
     public function setItemID($ItemID)
@@ -257,20 +278,13 @@ class OrderItem
     public function getDownloads()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/order_items/" . $this->ItemID . "/downloads";
+        // TODO: NOTE THIS USED TO BE $this->ItemID? 
+        $requestURL = "/order_items/" . $this->OrderItemID . "/downloads";
         $downloads = array();
         $results = APIWrapper::makeRequest($requestURL, "GET");
-        foreach ($results->download as $d) {
+        foreach ($results->downloads as $json_download) {
             $download = new OrderDownload();
-            $download->setDownloadID((string)$d->id);
-            $download->setFileName((string)$d->filename);
-            $download->setSKU((string)$d->product_sku);
-            $download->setOrderID((string)$d->order_id);
-            $download->setOrderItemID((string)$d->order_item_id);
-            $download->setIPAddress((string)$d->ip_address);
-            $download->setDownloadedOn(new \DateTime($d->downloaded_at));
-            $download->setSizeInBytes((int)$d->size_bytes);
-
+            $download->loadFromJSON($json_download);
             $downloads[] = $download;
         }
         return $downloads;
@@ -282,19 +296,15 @@ class OrderItem
     public function getFiles()
     {
         APIWrapper::verifyReadiness();
-        $requestURL = "https://app.fetchapp.com/api/v2/order_items/" . $this->ItemID . "/files";
+
+        // TODO: NOTE THIS USED TO BE $this->ItemID? 
+        $requestURL = "/order_items/" . $this->OrderItemID . "/files";
+
         $files = array();
         $results = APIWrapper::makeRequest($requestURL, "GET");
-        foreach ($results->file as $file) {
+        foreach ($results->files as $json_file) {
             $tempFile = new FileDetail();
-
-            $tempFile->setFileID($file->id);
-            $tempFile->setFileName($file->filename);
-            $tempFile->setSizeInBytes($file->size_bytes);
-            $tempFile->setContentType($file->content_type);
-            $tempFile->setPermalink($file->permalink);
-            $tempFile->setURL($file->url);
-
+            $tempFile->loadFromJSON($json_file);
             $files[] = $tempFile;
         }
         return $files;
@@ -311,5 +321,54 @@ class OrderItem
         return $response;
     }
 
+    public function toPostData(){
+        $order_item = new \stdClass();
 
+        if($this->getOrderItemID() ):
+            $order_item->id = $this->getOrderItemID();
+        endif;
+
+        if($this->getItemID() ):
+            $order_item->item_id = $this->getItemID();
+        endif;
+
+        $order_item->item_sku = $this->getSKU();
+
+        // TODO: Misssing - Order ID, Product Name, Downloads remaining        
+        // $order_item->downloads_remaining = $this->getDownloadsRemaining();
+
+        $order_item->download_count = $this->getDownloadCount();
+        $order_item->price = $this->getPrice();
+
+        $order_item->custom_1 = $this->getCustom1();
+        $order_item->custom_2 = $this->getCustom1();
+        $order_item->custom_3 = $this->getCustom1();
+
+        return $order_item;
+    }
+
+    public function loadFromJSON($json){
+        if (is_object($json) ) :
+            $this->setOrderItemID((string)$json->id); // PRC - Added this for v3
+            $this->setItemID((string)$json->item_id);
+            $this->setSKU((string)$json->item_sku);
+
+            // TODO: API
+            // $i->setOrderID((string)$item->order_id);
+            // TODO: API
+            // $i->setProductName((string)$item->product_name);
+
+            $this->setPrice((float)$json->price);
+            $this->setDownloadCount((int)$json->download_count);       
+            $this->setCustom1($json->custom_1);
+            $this->setCustom2($json->custom_2);
+            $this->setCustom3($json->custom_3);
+            $this->setCreationDate(new \DateTime($json->created_at));
+
+            // TODO: API
+            // $i->setDownloadsRemaining(0); // We don't seem to be getting this back.
+        endif;
+        
+        return true;
+    }
 }

@@ -4,8 +4,6 @@ fetchapp-php-2.0
 
 A PHP library for version 2.0 of the FetchApp API
 
-# Proposed Syntax
-
 ## Getting Account Information
 
 ```php
@@ -156,8 +154,12 @@ try{
     $order->setCustom3("Derp");
     $order->setExpirationDate(new DateTime("2015/12/24"));
     $order->setDownloadLimit(12);
+
     $items = array();
     // Add items to the item array
+    $order_item = new OrderItem();
+    $order_item->setSKU('TestSKU');
+    array_push($items, $order_item);
 
     $response = $order->create($items, false);
 }
@@ -379,7 +381,7 @@ echo $product->getProductID().PHP_EOL;
     echo $product->getSKU().PHP_EOL;   
 ```
 
-### Creating an Product
+### Creating a Product
 ```php
 use FetchApp\API\Currency;
 use FetchApp\API\FetchApp;
@@ -400,9 +402,12 @@ try{
     $product->setCurrency(Currency::GBP);
 
     $files = array();
-    // Add files to the file array
+    // Add exisitng FileDetail objects
 
-    $response = $product->create($files, false);
+    $item_urls = array(array("url" => "http://s3.aws/download.mp3", "name" => "audio"));
+    // Add new external URLs for files in the above format 
+
+    $response = $product->create($files, $item_urls);
 }
 catch (Exception $e){
     // This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
@@ -410,7 +415,7 @@ catch (Exception $e){
 }
 ```
 
-### Updating an Product
+### Updating a Product
 ```php
 use FetchApp\API\Currency;
 use FetchApp\API\FetchApp;
@@ -429,16 +434,22 @@ try{
     $product->setName("Test Product");
     $product->setPrice(3.00);
     $product->setCurrency(Currency::GBP);
-    $files = $product->getFiles(); // Get the existing product files
 
-    $response = $product->update($files, false);
+    $files = $product->getFiles();
+    // Get the existing files attached to the product
+
+    $item_urls = array(array("url" => "http://s3.aws/download.mp3", "name" => "audio"));
+    // Add new external URLs for files in the above format 
+    
+    $response = $product->update($files, $item_urls);
 }
 catch (Exception $e){
     // This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
     echo $e->getMessage();
 }
+```
 
-### Deleting an Product
+### Deleting a Product
 ```php
 use FetchApp\API\FetchApp;
 use FetchApp\API\Product;
@@ -460,7 +471,7 @@ catch (Exception $e){
 }
 ```
 
-### Get files for an Product
+### Get files for a Product
 ```php
 use FetchApp\API\FetchApp;
 use FetchApp\API\Product;
@@ -481,8 +492,9 @@ catch (Exception $e){
     // This will occur on any call if the AuthenticationKey and AuthenticationToken are not set.
     echo $e->getMessage();
 }
+```
 
-### Get statistics for an Product
+### Get statistics for a Product
 ```php
 use FetchApp\API\FetchApp;
 use FetchApp\API\Product;
@@ -505,7 +517,7 @@ catch (Exception $e){
 }
 ```
 
-### Get Downloads for an Product
+### Get Downloads for a Product
 ```php
 use FetchApp\API\FetchApp;
 use FetchApp\API\Product;

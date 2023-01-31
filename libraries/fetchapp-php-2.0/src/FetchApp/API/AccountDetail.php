@@ -242,4 +242,22 @@ class AccountDetail
     {
         return $this->URL;
     }
+
+    public function loadFromJSON($json){
+        if (is_object($json) ) :
+            $this->setAccountID($json->id);
+            $this->setAccountName($json->name);
+            $this->setEmailAddress($json->email);
+            $this->setURL($json->url);
+            $this->setBillingEmail($json->billing_email);
+            $this->setOrderExpirationInHours($json->order_expiration);
+            $this->setItemDownloadLimit($json->download_limit);
+            $this->setCurrency(Currency::getValue($json->currency));
+            $this->setCreationDate(new \DateTime($json->created_at));
+            $this->setAPIKey($json->api_key);
+            $this->setAPIToken($json->api_token);
+        endif;
+        
+        return true;
+    }
 }

@@ -236,7 +236,7 @@ class FetchApp
 
         $response = APIWrapper::makeRequest($requestURL, "GET");
 
-        if (is_object($response) && is_object($response->product)) :
+        if (is_object($response) && isset($response->product) && is_object($response->product)) :
             $product = $response->product;
             $tempProduct = new Product();
             $tempProduct->loadFromJSON($product);

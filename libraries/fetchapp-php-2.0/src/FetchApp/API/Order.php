@@ -601,7 +601,8 @@ class Order
     public function toPostData($sendEmailFlag = true){
         $json_object = new \stdClass();
         $json_object->id = $this->OrderID;
-        $json_object->vendor_id = $this->VendorID;
+        $json_object->vendor_id = (string)$this->VendorID;
+        $json_object->custom_order_id = (string)$this->VendorID;
 
         $json_object->first_name = $this->FirstName;
         $json_object->last_name = $this->LastName;

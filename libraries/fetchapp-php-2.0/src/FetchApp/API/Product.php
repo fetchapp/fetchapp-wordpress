@@ -466,7 +466,7 @@ class Product
         $json_object = new \stdClass();
 
         $json_object->id = $this->ProductID;
-        $json_object->sku = $this->SKU;
+        $json_object->sku = (string)$this->SKU;
         $json_object->name = $this->Name;
         $json_object->price = $this->Price;
         $json_object->currency = Currency::getName($this->Currency);

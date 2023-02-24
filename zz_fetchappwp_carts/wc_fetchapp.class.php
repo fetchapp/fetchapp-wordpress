@@ -260,10 +260,9 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				    $fetch_product->setCurrency(1); // HARDCODED TO USD
 
 					update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_sku );
-					$files = $fetch_product->getFiles();
-
+					
 					/* Push to Fetch */
-				    $response = $fetch_product->updateBySku($files);
+				    $response = $fetch_product->updateBySku();
 				endif;
 
 			    if($this->debug):

@@ -219,6 +219,32 @@ class FetchApp
             return false;
         endif;
     }
+
+    /**
+     * @param $productID
+     * @return Product
+     */
+    public function getProductBySku($productSku)
+    {
+        APIWrapper::verifyReadiness();
+
+        if(! $productSku):
+            return false;
+        endif;
+        
+        $requestURL = "/skuproducts/" . $productSku;
+
+        $response = APIWrapper::makeRequest($requestURL, "GET");
+
+        if (is_object($response) && isset($response->product) && is_object($response->product)) :
+            $product = $response->product;
+            $tempProduct = new Product();
+            $tempProduct->loadFromJSON($product);
+            return $tempProduct;
+        else:
+            return false;
+        endif;
+    }
 	
     /**
 	 * @param $itemsPerPage

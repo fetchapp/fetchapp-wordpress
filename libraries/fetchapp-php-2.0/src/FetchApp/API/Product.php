@@ -271,14 +271,62 @@ class Product
      * @param array $item_urls
      * @return mixed
      */
-    public function update(array $files, array $item_urls = array() )
+    public function update($files=false, $item_urls = false )
     {
         APIWrapper::verifyReadiness();
-        $this->files = $files;
-        $this->item_urls = $item_urls;
+
+        $update_files = false;
+        $update_item_urls = false;
+
+        if($files !== false):
+            $this->files = $files;
+            $update_files = true;
+        endif;
+
+        if($item_urls !== false):
+            $this->item_urls = $item_urls;
+            $update_item_urls = true;
+        endif;
 
         $url = "/products/" . $this->ProductID; 
-        $data = $this->toPostData();
+        $data = $this->toPostData($update_files, $update_item_urls);
+
+        $response = APIWrapper::makeRequest($url, "PUT", $data);
+
+        if (isset($response->product->id)) :
+            $product = $response->product;
+            $this->loadFromJSON($product);
+            return true;
+        else:
+            // It failed, let's return the error
+            return $response;
+        endif;
+    }
+
+    /**
+     * @param array $files
+     * @param array $item_urls
+     * @return mixed
+     */
+    public function updateBySku($files=false, $item_urls = false )
+    {
+        APIWrapper::verifyReadiness();
+
+        $update_files = false;
+        $update_item_urls = false;
+
+        if($files !== false){
+            $this->files = $files;
+            $update_files = true;
+        }
+
+        if($item_urls !== false):
+            $this->item_urls = $item_urls;
+            $update_item_urls = true;
+        endif;
+
+        $url = "/skuproducts/" . $this->getSKU(); 
+        $data = $this->toPostData($update_files, $update_item_urls);
 
         $response = APIWrapper::makeRequest($url, "PUT", $data);
 
@@ -414,11 +462,11 @@ class Product
         return $productXML->asXML();
     }
 
-    public function toPostData(){
+    public function toPostData($update_files = true, $update_item_urls=true){
         $json_object = new \stdClass();
 
         $json_object->id = $this->ProductID;
-        $json_object->sku = $this->SKU;
+        $json_object->sku = (string)$this->SKU;
         $json_object->name = $this->Name;
         $json_object->price = $this->Price;
         $json_object->currency = Currency::getName($this->Currency);
@@ -434,26 +482,43 @@ class Product
             $json_object->created_at = $this->CreationDate->format(\DateTime::ISO8601);
         endif;
 
-        $json_object->files = [];
-        foreach ($this->files as $file) :
-            if($file->getFileID() ):
-                $fileElm = new \stdClass();
-                $fileElm->id = $file->getFileID();
-                $json_object->files[] = $fileElm;
-            endif;
-        endforeach;
-
-        $json_object->item_urls = [];
-        foreach ($this->item_urls as $item_url) :
-            if(isset($item_url['url'])):
-                $itemUrlsElm = new \stdClass();
-                $itemUrlsElm->url = $item_url['url'];
-                
-                if(isset($item_url['name'])):
-                    $itemUrlsElm->name = $item_url['name'];
+        if($update_files):
+            $json_object->item_assets = [];
+            foreach ($this->files as $file) :
+                if($file->getFileID() ):
+                    $json_object->item_assets[] = $file->getFileID();
                 endif;
-            endif;
-        endforeach;
+            endforeach;
+        endif;
+
+        if($update_item_urls):
+            $json_object->item_urls = [];
+            foreach ($this->item_urls as $item_url) :
+                if(is_object($item_url)):
+                    if(isset($item_url->url)):
+                        $itemUrlsElm = new \stdClass();
+                        $itemUrlsElm->url = $item_url->url;
+                        
+                        if(isset($item_url->name)):
+                            $itemUrlsElm->name = $item_url->name;
+                        endif;
+
+                        $json_object->item_urls[] = $itemUrlsElm;
+                    endif;
+                elseif(is_array($item_url) ):
+                    if(isset($item_url['url'])):
+                        $itemUrlsElm = new \stdClass();
+                        $itemUrlsElm->url = $item_url['url'];
+                        
+                        if(isset($item_url['name'])):
+                            $itemUrlsElm->name = $item_url['name'];
+                        endif;
+
+                        $json_object->item_urls[] = $itemUrlsElm;
+                    endif;
+                endif;
+            endforeach;
+        endif;
 
         $output = array('product' => $json_object);
         return $output;
@@ -475,6 +540,8 @@ class Product
             // $this->setPaypalViewCartLink($json->paypal_view_cart_link['href']);
 
             $this->setCreationDate(new \DateTime($json->created_at));
+
+            $this->item_urls = $json->item_urls;
 
             // TODO: NEED IN API
             // $this->setFilesUri($json->files_uri);

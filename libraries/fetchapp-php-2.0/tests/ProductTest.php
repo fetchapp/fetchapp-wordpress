@@ -50,6 +50,17 @@ final class ProductTest extends FetchAppBaseTest
         return $product;
     }
 
+    public function testSingleBySku(): Product
+    {
+        $fetch = self::$fetch;
+        $product = $fetch->getProductBySku($_ENV['TEST_SINGLE_PRODUCT_SKU']);
+
+        $this->assertSame((int)$_ENV['TEST_SINGLE_PRODUCT_ID'], $product->getProductID());
+        $this->assertSame($_ENV['TEST_SINGLE_PRODUCT_SKU'], $product->getSKU());
+        $this->assertSame($_ENV['TEST_SINGLE_PRODUCT_NAME'], $product->getName());
+        return $product;
+    }
+
     public function testCreate(): Product
     {
         $fetch = self::$fetch;
@@ -106,6 +117,28 @@ final class ProductTest extends FetchAppBaseTest
         $this->assertTrue($response);
         $this->assertNotNull($product->getProductID());
         $this->assertSame($random_sku, $product->getSKU());
+        $this->assertSame($random_name, $product->getName());
+        return $product;
+    }
+
+    public function testUpdateBySku(): Product
+    {
+        $fetch = self::$fetch;
+
+        $product = $this->testCreate();
+
+        $random_name = "PRCTest  Product UPDATE ".time();
+
+        $product->setName($random_name);
+        $product->setPrice(2.00);
+        $product->setCurrency(Currency::GBP);
+
+        $files = $product->getFiles();
+
+        $item_urls = array(array("url" => "http://s3.aws/download_update.mp3", "name" => "audio"));
+        $response = $product->updateBySku($files, $item_urls);
+        $this->assertTrue($response);
+        $this->assertNotNull($product->getProductID());
         $this->assertSame($random_name, $product->getName());
         return $product;
     }

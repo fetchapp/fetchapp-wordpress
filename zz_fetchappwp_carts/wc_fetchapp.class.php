@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.8.0
+Version: 1.9.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1
@@ -56,7 +56,6 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				// var_dump("ORDER ID FOR FETCH:".$wc_order_number_for_fetch);
 				// var_dump("POST ID:".$wc_order_post_id);
 
-			    $order->setOrderID($wc_order_number_for_fetch); // was wc_order_id 01.2021
 			    $order->setFirstName($wc_order->order_custom_fields['_billing_first_name'][0]);
 			    $order->setLastName($wc_order->order_custom_fields['_billing_last_name'][0]);
 			    $order->setEmailAddress($wc_order->order_custom_fields['_billing_email'][0]);
@@ -89,6 +88,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					$product = $product_factory->get_product($product_id);
 
 					$fetch_sku = get_post_meta($product_id, '_fetchapp_id', true);
+					$fetch_system_id = get_post_meta($product_id, '_fetchapp_system_id', true);
 					$fetch_product_sync = get_post_meta($product_id, '_fetchapp_sync', true);
 
 
@@ -97,8 +97,9 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 						for($i = 0; $i < $qty; $i++){
 					    	$order_item = new FetchApp\API\OrderItem();
 							$order_item->setSKU($fetch_sku);
+							$order_item->setItemId($fetch_system_id);
 							$order_item->setProductName($product->get_title());
-							$order_item->setOrderID($wc_order_number_for_fetch);
+							// $order_item->setOrderID($wc_order_number_for_fetch);
 
 							if($price):
 								$order_item->setPrice((float)$price);
@@ -111,10 +112,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				endforeach;
 
 				$fetch_saved_order_id = get_post_meta($wc_order_post_id, '_fetchapp_id', true);
-
-				// PRC NOTE: CHECK THIS WITH V3 Upgrade for difference between Vendor and Order ID 
-				$fetch_order = $this->fetchApp->getOrder($fetch_saved_order_id);
-
+				$fetch_order = $this->fetchApp->getOrderById($fetch_saved_order_id);
 				$response = false;
 				if(! $fetch_order || ! $fetch_order->getOrderID() ):
 				    if(count($items) == 0):
@@ -133,18 +131,13 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				else:
 				    if(count($items) == 0):
 					    if($this->debug):
-					    	$this->showMessage("No FetchApp line items, skipping: ".$fetch_order->getOrderID() );
+					    	$this->showMessage("No FetchApp line items, skipping: ".$fetch_order->getVendorID() );
 					   	endif;
 				    else:
 				    	if($this->debug):
-					    	$this->showMessage("Updating Order in FetchApp: ".$fetch_order->getOrderID());
+					    	$this->showMessage("Updating Order in FetchApp: ".$fetch_order->getVendorID());
 					    endif;
 						$order->setOrderID($fetch_order->getOrderID() );
-
-						// PRC 01.2021 - Do I want to do this? 
-						// On update, do not change Vendor ID
-						$order->setVendorID($fetch_order->getVendorID() );
-						// $order->setVendorID($wc_order_number_for_fetch);
 
 					    $response = $order->update($items, $send_email);
 						//update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_saved_order_id );
@@ -157,7 +150,9 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			    	if($response === true):
 		    			$this->showMessage("FetchApp: Success");
 			    	else:
-		    			$this->showMessage("FetchApp Error: ".print_r($response, true) );
+			    		if($response):
+			    			$this->showMessage("FetchApp Error: ".print_r($response, true) );
+			    		endif;
 			    	endif;
 				endif;
 			}
@@ -230,12 +225,10 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					$wc_sku = $wc_product_id; 
 				endif;
 
-
-
 				/* Validation for create must include price, and name. SKU can be generated from product ID */
 
 				$fetch_sku = get_post_meta($wc_product_id, '_fetchapp_id', true);
-				$fetch_product = $this->fetchApp->getProduct($fetch_sku);
+				$fetch_product = $this->fetchApp->getProductBySku($fetch_sku);
 
 				if(! $fetch_product || ! $fetch_product->getProductID() ):
 
@@ -248,9 +241,21 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 					$fetch_product->setName($wc_product_title ); 
 				    $fetch_product->setCurrency(1); // HARDCODED TO USD
 
-					update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_sku );
 
 				    $response = $fetch_product->create(array() );
+
+				    if($response == true ):
+    					$fetch_product = $this->fetchApp->getProductBySku($fetch_sku);
+
+						if($fetch_product):
+							update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_sku );
+							update_post_meta( $wc_product_id, '_fetchapp_system_id', $fetch_product->getProductID() );
+						endif;
+					elseif(isset($response->errors) ):
+						if($this->debug):
+			    			$this->showMessage("FetchApp Create Product Error");
+						endif;
+					endif;
 				else:
 					$fetch_sku = $wc_sku;
 					$fetch_product->setSKU($fetch_sku); 
@@ -260,11 +265,10 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				    $fetch_product->setCurrency(1); // HARDCODED TO USD
 
 					update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_sku );
-
-					$files = $fetch_product->getFiles();
+					update_post_meta( $wc_product_id, '_fetchapp_system_id', $fetch_product->getProductID() );
 
 					/* Push to Fetch */
-				    $response = $fetch_product->update($files);
+				    $response = $fetch_product->updateBySku();
 				endif;
 
 			    if($this->debug):
@@ -363,7 +367,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$order_item_array[] = $order_item['order_item_id'];
 			endforeach;
 
-			$order_item_id_string = implode($order_item_array, ", ");
+			$order_item_id_string = implode(", ", $order_item_array);
 
 			// Delete their meta
 			if(! empty($order_item_array)):
@@ -375,18 +379,20 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			$delete_response = $wpdb->get_results($delete_sql, OBJECT);
 
 			foreach($fetch_items as $fetch_item):
-				$fetch_product_id = $fetch_item->getSKU();
-				$fetch_product = $this->fetchApp->getProduct($fetch_product_id);
+				$fetch_product_id = $fetch_item->getItemID();
+				$fetch_product_sku = $fetch_item->getSKU();
 
-				$wc_product = $this->getWCProductByFetchSKU($fetch_product_id);
+				$wc_product = $this->getWCProductByFetchSKU($fetch_product_sku);
 
 				if(! $wc_product || ! is_object($wc_product)):
 					continue;
 				endif;
 
+				$fetch_product_name = $wc_product->get_title();
+
 				$order_item = array(
 									'order_id' => $post_id,
-									'order_item_name' => $fetch_product->getName(),
+									'order_item_name' => $fetch_product_name,
 									'order_item_type' => 'line_item'
 								);
 
@@ -499,6 +505,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			update_post_meta( $post_id, '_virtual', 'yes' );
 			update_post_meta( $post_id, '_downloadable', 'yes' );
 			update_post_meta( $post_id, '_fetchapp_id', (string)$fetch_product->getSKU() );
+			update_post_meta( $post_id, '_fetchapp_system_id', $fetch_product->getProductID() );
 			update_post_meta( $post_id, '_fetchapp_sync', 'yes' );
 			update_post_meta( $post_id, '_visibility', 'visible');
 			update_post_meta( $post_id, '_sold_individually', 'yes');
@@ -564,10 +571,13 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			endif;
 		}
 
-		public function getWCProducts(){
+		public function getWCProducts($page=1, $per_page=50){
+			$offset = ($page-1) * $per_page;
+
 			$products = get_posts( array(
 	           'post_type'      => array( 'product'),
-	           'posts_per_page' => -1,
+	           'posts_per_page' => $per_page,
+	           'offset' => $offset,
 	           'post_status'    => 'publish',
 	          /* 'meta_query'     => array(
 	               array(
@@ -595,10 +605,13 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			return $out;
 		}
 
-		public function getWCOrders(){
+		public function getWCOrders($page=1, $per_page=50){
+			$offset = ($page-1) * $per_page;
+
 			$orders = get_posts( array(
 	           'post_type'      => array( 'shop_order'),
-	           'posts_per_page' => -1,
+	           'posts_per_page' => $per_page,
+	           'offset' => $offset,
 	           'post_status'    => array_keys( wc_get_order_statuses() ),
 	           'fields'         => 'id=>parent',
 	       ) );

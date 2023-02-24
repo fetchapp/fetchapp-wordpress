@@ -14,8 +14,6 @@ namespace FetchApp\API;
 
 class APIWrapper
 {
-    private static $api_url = 'https://pogodan.dev.fetchapp.com/api/v3';
-
 	/**
      * @var $AuthenticationToken String
      */
@@ -67,10 +65,11 @@ class APIWrapper
      */
     public static function makeRequest($url, $method, $data = null)
     {   
-        // PRC 10.2020
-        // Ensure the API URL is only in there once
-        $url = str_replace(self::$api_url, "", $url);
-        $url = self::$api_url.$url;
+        // PRC 02.2023
+        $api_url_base = "https://".self::$AuthenticationKey.".fetchapp.com/api/v3";
+
+        $url = str_replace($api_url_base, "", $url);
+        $url = $api_url_base.$url;
 
         $credentials = self::$AuthenticationKey . ':' . self::$AuthenticationToken;
         $headers = array(

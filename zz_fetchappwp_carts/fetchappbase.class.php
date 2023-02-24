@@ -4,23 +4,23 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.8.0
+Version: 1.9.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1
 */
 
 $class_path = plugin_dir_path( __FILE__ );
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/APIWrapper.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/AccountDetail.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Currency.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Order.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/OrderItem.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/OrderStatus.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Product.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/ProductStatistic.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FileDetail.class.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/FetchApp.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/APIWrapper.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/AccountDetail.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Currency.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Order.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/OrderItem.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/OrderStatus.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Product.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/ProductStatistic.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/FileDetail.php");
 
 if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
@@ -150,12 +150,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			return "No cart selected.";
 		}
 
-		public function pullAllProducts(){
+		public function pullAllProducts($startingPage=1, $stopPage=false){
 			$this->pull_from_fetch_happening = true;
-			$page = 1;
+			$page = $startingPage;
 
 			try{
-				while($fetch_products = $this->pullProductsFromFetch($page, 100) ):
+				while($fetch_products = $this->pullProductsFromFetch($page, 50) ):
 					if(count($fetch_products) == 0):
 						break;
 					endif;
@@ -163,6 +163,9 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 						$this->insertFetchProduct($product);
 					endforeach;
 					$page++;
+					if($stopPage !== false && $page > $stopPage):
+						break;
+					endif;
 				endwhile;
 			}
 			catch (Exception $e){
@@ -172,26 +175,34 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			$this->pull_from_fetch_happening = false;
 		}
 
-		public function pushAllProducts(){
-			$wc_products = $this->getWCProducts(); /* Get WC Products */
+		public function pushAllProducts($startingPage=1, $stopPage=false){
+			$page = $startingPage;
+			do{
+				$wc_product_batch = $this->getWCProducts($page, 50);
 
-			foreach($wc_products as $product):
-				/* Push to Fetch */
-				$this->pushProductToFetch($product);
-			endforeach;		
+				foreach($wc_product_batch as $product):
+					/* Push to Fetch */
+					$this->pushProductToFetch($product);
+				endforeach;		
+				$page++;
+				if($stopPage !== false && $page > $stopPage):
+					break;
+				endif;
+			}
+			while(count($wc_product_batch) > 0);
 		}
 
-		public function syncAllProducts(){
-			$this->pullAllProducts();
-			$this->pushAllProducts();
+		public function syncAllProducts($startingPage=1, $stopPage=false){
+			$this->pullAllProducts($startingPage, $stopPage);
+			$this->pushAllProducts($startingPage, $stopPage);
 		}
 
-		public function pullAllOrders(){
+		public function pullAllOrders($startingPage=1, $stopPage=false){
 			$this->pull_from_fetch_happening = true;
-			$page = 1;
+			$page = $startingPage;
 
 			try{
-				while($fetch_orders = $this->pullOrdersFromFetch($page, 100) ):
+				while($fetch_orders = $this->pullOrdersFromFetch($page, 50) ):
 					if(count($fetch_orders) == 0):
 						break;
 					endif;
@@ -199,6 +210,9 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 						$this->insertFetchOrder($order);
 					endforeach;
 					$page++;
+					if($stopPage !== false && $page > $stopPage):
+						break;
+					endif;
 				endwhile;
 			}
 			catch (Exception $e){
@@ -208,35 +222,44 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			$this->pull_from_fetch_happening = false;
 		}
 
-		public function pushAllOrders(){
-			$wc_orders = $this->getWCOrders(); /* Get WC Orders */
+		public function pushAllOrders($startingPage=1, $stopPage=false){
+			$page = $startingPage;
+			do{
+				$wc_orders_batch = $this->getWCOrders($page, 50);
 
-			foreach($wc_orders as $order):
-				/* Push to Fetch */
-				$order_id = $order->ID;
+				foreach($wc_orders_batch as $order):
+					/* Push to Fetch */
+					$order_id = $order->ID;
 
-				if(! $this->fetchapp_send_incomplete_orders): /* If we don't send incomplete orders */
-					
-					if($order->post_status != 'wc-completed'): /* If it's not completed, don't send it, so return */
-						continue;
+					if(! $this->fetchapp_send_incomplete_orders): /* If we don't send incomplete orders */
+						
+						if($order->post_status != 'wc-completed'): /* If it's not completed, don't send it, so return */
+							continue;
+						else:
+							$this->pushOrderToFetch($order, false); /* And send an email */
+
+							/* But then set that this order is in sync */
+							update_post_meta( $order_id, '_fetchapp_sync', 'yes');
+						endif;
 					else:
-						$this->pushOrderToFetch($order, false); /* And send an email */
+						$this->pushOrderToFetch($order, false); 
 
 						/* But then set that this order is in sync */
 						update_post_meta( $order_id, '_fetchapp_sync', 'yes');
 					endif;
-				else:
-					$this->pushOrderToFetch($order, false); 
+				endforeach;	
 
-					/* But then set that this order is in sync */
-					update_post_meta( $order_id, '_fetchapp_sync', 'yes');
+				$page++;
+				if($stopPage !== false && $page > $stopPage):
+					break;
 				endif;
-			endforeach;	
+			}
+			while(count($wc_orders_batch) > 0);
 		}
 
-		public function syncAllOrders(){
-			$this->pullAllOrders();
-			$this->pushAllOrders();	
+		public function syncAllOrders($startingPage=1, $stopPage=false){
+			$this->pullAllOrders($startingPage, $stopPage);
+			$this->pushAllOrders($startingPage, $stopPage);	
 		}
 
 		public function pullProductsFromFetch($page, $per_page){
@@ -303,7 +326,19 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		    add_menu_page( 'FetchApp Settings', 'FetchApp', 'manage_options', 'fetchapp_wc_settings', array($this, 'fetchapp_wc_settings_page'), plugins_url( 'fetchapp-for-woocommerce/images/logo.png' ), 58 ); 
 		}
 
-		public function fetchapp_wc_settings_page(){			
+		public function fetchapp_wc_settings_page(){	
+			$startingPage = 1;
+
+			if(isset($_POST['starting_page']) && $_POST['starting_page'] > 0):
+				$startingPage = (int)$_POST['starting_page'];
+			endif;	
+
+			$stopPage = false;
+
+			if(isset($_POST['stop_page']) && $_POST['stop_page'] > 0):
+				$stopPage = (int)$_POST['stop_page'];
+			endif;	
+
 			if(isset($_POST['update_fetchapp_settings'])):
 				
 				$possible_settings = array('fetchapp_key', 'fetchapp_token');
@@ -350,32 +385,32 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			endif;
 
 			if(isset($_POST['sync_orders'])):
-				$this->syncAllOrders();
+				$this->syncAllOrders($startingPage, $stopPage);
 				$this->showMessage("Orders synchronized with FetchApp");
 			endif;
 
 			if(isset($_POST['pull_orders'])):
-				$this->pullAllOrders();
+				$this->pullAllOrders($startingPage, $stopPage);
 				$this->showMessage("Orders pulled from FetchApp");
 			endif;
 
 			if(isset($_POST['push_orders'])):
-				$this->pushAllOrders();
+				$this->pushAllOrders($startingPage, $stopPage);
 				$this->showMessage("Orders pushed to FetchApp");
 			endif;
 
 			if(isset($_POST['sync_products'])):
-				$this->syncAllProducts();
+				$this->syncAllProducts($startingPage, $stopPage);
 				$this->showMessage("Products synchronized with FetchApp");
 			endif;
 
 			if(isset($_POST['pull_products'])):
-				$this->pullAllProducts();
+				$this->pullAllProducts($startingPage, $stopPage);
 				$this->showMessage("Products pulled from FetchApp");
 			endif;
 
 			if(isset($_POST['push_products'])):
-				$this->pushAllProducts();
+				$this->pushAllProducts($startingPage, $stopPage);
 				$this->showMessage("Products pushed to FetchApp");
 			endif;
 
@@ -387,6 +422,12 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			echo "<br /><br /><input name=\"update_fetchapp_settings\" type=\"submit\" value=\"Save Settings\" /><br /><br />";
 
 			echo "<h3>Sync Actions</h3>";
+			echo "<h4>Pagination</h4>";
+				echo "<p>If you experience timeouts when syncing, you can set a start and stop page for all sync actions<p>";
+				echo "<div>";
+					echo "<label>Start Page: </label><input type='text' name='starting_page' style='width: 50px; margin-right: 0.5rem;' />";
+					echo "<label>Stop Page: </label><input type='text' name='stop_page' style='width: 50px' />";
+				echo "</div>";
 			echo "<h4>Orders</h4>";
 			echo "<input name=\"sync_orders\" type=\"submit\" value=\"Sync (Pull + Push) Orders\" /> | ";
 			echo "<input name=\"pull_orders\" type=\"submit\" value=\"Pull Orders\" /> | ";
@@ -545,9 +586,13 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 		    }
 
 		   $fetchapp_id = get_post_meta( $post->ID, '_fetchapp_id', true);
+		   $fetchapp_system_id = get_post_meta( $post->ID, '_fetchapp_system_id', true);
 		 	if($fetchapp_id):
 		 		if($post->post_type == 'product'):
 			 		echo "<br /><label>FetchApp SKU:</label> <strong>{$fetchapp_id}</strong>";
+			 		if($fetchapp_system_id):
+				 		echo "<br /><label>FetchApp ID:</label> <strong>{$fetchapp_system_id}</strong>";
+				 	endif;
 		 		else:
 		 			echo "<br /><label>FetchApp Order ID:</label> <strong>{$fetchapp_id}</strong>";
 		 		endif;

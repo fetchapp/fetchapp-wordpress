@@ -7,7 +7,7 @@ Author: Patrick Conant
 Version: 1.9.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
-WC tested up to: 4.9.1
+WC tested up to: 7.4.0
 */
 
 if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) :

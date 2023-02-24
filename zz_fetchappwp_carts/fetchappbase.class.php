@@ -4,23 +4,23 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.8.0
+Version: 1.9.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1
 */
 
 $class_path = plugin_dir_path( __FILE__ );
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/APIWrapper.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/AccountDetail.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Currency.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Order.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/OrderItem.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/OrderStatus.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/Product.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/ProductStatistic.class.php");
-require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FileDetail.class.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/FetchApp.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/APIWrapper.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/AccountDetail.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Currency.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Order.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/OrderItem.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/OrderStatus.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/Product.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/ProductStatistic.php");
+require_once("{$class_path}/../libraries/fetchapp-php-2.0/src/FetchApp/API/FileDetail.php");
 
 if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 
@@ -191,7 +191,7 @@ if ( ! class_exists( 'WP_FetchAppBase' ) ) :
 			$page = 1;
 
 			try{
-				while($fetch_orders = $this->pullOrdersFromFetch($page, 100) ):
+				while($fetch_orders = $this->pullOrdersFromFetch($page, 50) ):
 					if(count($fetch_orders) == 0):
 						break;
 					endif;

@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.8.0
+Version: 1.9.0
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1
@@ -235,7 +235,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				/* Validation for create must include price, and name. SKU can be generated from product ID */
 
 				$fetch_sku = get_post_meta($wc_product_id, '_fetchapp_id', true);
-				$fetch_product = $this->fetchApp->getProduct($fetch_sku);
+				$fetch_product = $this->fetchApp->getProductBySku($fetch_sku);
 
 				if(! $fetch_product || ! $fetch_product->getProductID() ):
 
@@ -260,11 +260,10 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				    $fetch_product->setCurrency(1); // HARDCODED TO USD
 
 					update_post_meta( $wc_product_id, '_fetchapp_id', $fetch_sku );
-
 					$files = $fetch_product->getFiles();
 
 					/* Push to Fetch */
-				    $response = $fetch_product->update($files);
+				    $response = $fetch_product->updateBySku($files);
 				endif;
 
 			    if($this->debug):
@@ -363,7 +362,7 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 				$order_item_array[] = $order_item['order_item_id'];
 			endforeach;
 
-			$order_item_id_string = implode($order_item_array, ", ");
+			$order_item_id_string = implode(", ", $order_item_array);
 
 			// Delete their meta
 			if(! empty($order_item_array)):
@@ -375,18 +374,20 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 			$delete_response = $wpdb->get_results($delete_sql, OBJECT);
 
 			foreach($fetch_items as $fetch_item):
-				$fetch_product_id = $fetch_item->getSKU();
-				$fetch_product = $this->fetchApp->getProduct($fetch_product_id);
+				$fetch_product_id = $fetch_item->getItemID();
+				$fetch_product_sku = $fetch_item->getSKU();
 
-				$wc_product = $this->getWCProductByFetchSKU($fetch_product_id);
+				$wc_product = $this->getWCProductByFetchSKU($fetch_product_sku);
 
 				if(! $wc_product || ! is_object($wc_product)):
 					continue;
 				endif;
 
+				$fetch_product_name = $wc_product->get_title();
+
 				$order_item = array(
 									'order_id' => $post_id,
-									'order_item_name' => $fetch_product->getName(),
+									'order_item_name' => $fetch_product_name,
 									'order_item_type' => 'line_item'
 								);
 

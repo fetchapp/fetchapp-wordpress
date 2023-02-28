@@ -4,7 +4,7 @@ Donate link: http://www.prcapps.com/
 Tags: fetchapp,woocommerce
 Requires at least: 3.6
 Tested up to: 6.1.1
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 WC requires at least: 3.6
 WC tested up to: 7.4.0
 License: GPLv2 or later

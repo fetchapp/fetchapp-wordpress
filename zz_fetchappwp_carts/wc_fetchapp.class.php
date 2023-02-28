@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.9.0
+Version: 1.9.1
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1
@@ -94,6 +94,23 @@ if ( ! class_exists( 'WC_FetchApp' ) ) :
 
 					// If there's a fetch SKU set, we need to push this order up
 					if($fetch_sku && $fetch_product_sync == 'yes'):
+						// First, we need to check FetchApp to confirm a valid product exists
+						$fetch_product = $this->fetchApp->getProductBySku($fetch_sku);
+
+						if(! $fetch_product || ! $fetch_product->getProductID() ):
+							// If this product doesn't exist on Fetch, skip it
+							continue;
+						endif;
+
+						// FUTURE: May want to check if there's files on the product as well
+						// because otherwise I don't think we need to push this to Fetch
+
+						// If we're missing the Fetch System ID, update it now
+						if(! $fetch_system_id):
+							$fetch_system_id = $fetch_product->getProductID();
+							update_post_meta( $product_id, '_fetchapp_system_id', $fetch_system_id );
+						endif;
+
 						for($i = 0; $i < $qty; $i++){
 					    	$order_item = new FetchApp\API\OrderItem();
 							$order_item->setSKU($fetch_sku);

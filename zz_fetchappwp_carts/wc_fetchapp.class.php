@@ -4,7 +4,7 @@ Plugin Name: FetchApp
 Plugin URI: http://www.fetchapp.com/
 Description: Fetch App Integration for WooCommerce
 Author: Patrick Conant
-Version: 1.9.1
+Version: 1.9.2
 Author URI: http://www.prcapps.com/
 WC requires at least: 3.6
 WC tested up to: 4.9.1

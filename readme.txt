@@ -4,7 +4,7 @@ Donate link: http://www.prcapps.com/
 Tags: fetchapp,woocommerce
 Requires at least: 3.6
 Tested up to: 6.1.1
-Stable tag: 1.9.1
+Stable tag: 1.9.2
 WC requires at least: 3.6
 WC tested up to: 7.4.0
 License: GPLv2 or later
@@ -31,6 +31,9 @@ This plugin provides integration between FetchApp and WooCommerce.
 1. Synchronize your products by click the "Synchronize Products" or "Synchronize Orders" buttons
 
 == Changelog ==
+
+= 1.9.2 =
+* [Bugfix] Checks FetchApp API for existing of Product before pushing Order
 
 = 1.9.0 =
 * [Major] Adds compatibility with FetchApp API V3
